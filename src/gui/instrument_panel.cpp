@@ -15,30 +15,30 @@ InstrumentPanel::InstrumentPanel(int x, int y, int w, int h, Engine& engine)
     int left_w = 350;
     int margin = 10;
 
-    m_detach_btn = new Fl_Button(w - 30, 0, 30, 20, "[]");
+    m_detach_btn = new Fl_Button(x + w - 30, y, 30, 20, "[]");
     m_detach_btn->callback(cb_detach, this);
 
     int cur_y = margin;
     int btn_w = (left_w - 5 * margin) / 4;
 
-    m_new_btn = new Fl_Button(margin, cur_y, btn_w, 25, "New");
+    m_new_btn = new Fl_Button(x + margin, y + cur_y, btn_w, 25, "New");
     m_new_btn->callback(cb_new, this);
 
-    m_load_btn = new Fl_Button(2 * margin + btn_w, cur_y, btn_w, 25, "Load");
+    m_load_btn = new Fl_Button(x + 2 * margin + btn_w, y + cur_y, btn_w, 25, "Load");
     m_load_btn->callback(cb_load, this);
 
-    m_save_btn = new Fl_Button(3 * margin + 2 * btn_w, cur_y, btn_w, 25, "Save");
+    m_save_btn = new Fl_Button(x + 3 * margin + 2 * btn_w, y + cur_y, btn_w, 25, "Save");
     m_save_btn->callback(cb_save, this);
 
-    m_delete_btn = new Fl_Button(4 * margin + 3 * btn_w, cur_y, btn_w, 25, "Del");
+    m_delete_btn = new Fl_Button(x + 4 * margin + 3 * btn_w, y + cur_y, btn_w, 25, "Del");
     m_delete_btn->callback(cb_delete, this);
 
     cur_y += 25 + margin;
 
     // Instrument list scroll
-    m_inst_scroll = new Fl_Scroll(margin, cur_y, left_w - 2 * margin, 200);
+    m_inst_scroll = new Fl_Scroll(x + margin, y + cur_y, left_w - 2 * margin, 200);
     m_inst_scroll->type(Fl_Scroll::VERTICAL);
-    m_inst_container = new Fl_Group(margin, cur_y, left_w - 40, 1000);
+    m_inst_container = new Fl_Group(x + margin, y + cur_y, left_w - 40, 1000);
     m_inst_container->end();
     m_inst_scroll->add(m_inst_container);
     m_inst_scroll->end();
@@ -46,11 +46,11 @@ InstrumentPanel::InstrumentPanel(int x, int y, int w, int h, Engine& engine)
     cur_y += 200 + margin;
 
     // File browser
-    m_file_browser = new Fl_File_Browser(margin, cur_y, left_w - 2 * margin, h - cur_y - margin);
+    m_file_browser = new Fl_File_Browser(x + margin, y + cur_y, left_w - 2 * margin, y + h - (y + cur_y) - margin);
     m_file_browser->load(".");
 
     // Right side (Editor)
-    Fl_Box* editor_box = new Fl_Box(left_w + margin, margin, w - left_w - 2 * margin, h - 2 * margin, "Instrument Editor");
+    Fl_Box* editor_box = new Fl_Box(x + left_w + margin, y + margin, w - left_w - 2 * margin, h - 2 * margin, "Instrument Editor");
     editor_box->box(FL_ENGRAVED_FRAME);
     
     resizable(editor_box);
@@ -65,10 +65,8 @@ void InstrumentPanel::update_instrument_list() {
     m_inst_container->begin();
 
     int row_h = 35;
-    int start_y = m_inst_container->y(); // This is the y() relative to parent window, need to use relative to container
-    // FLTK y() is absolute. Within a scroll it is also weird.
-    // Let's use 0 as start_y since it is inside a group that was added to scroll.
-    start_y = 0; 
+    int start_y = m_inst_container->y();
+    int start_x = m_inst_container->x();
 
     int label_w = 30;
     int input_w = 120;
@@ -78,7 +76,7 @@ void InstrumentPanel::update_instrument_list() {
 
     for (size_t i = 0; i < num_insts; ++i) {
         int cur_y = start_y + (int)(i * row_h);
-        int cur_x = 0;
+        int cur_x = start_x;
         auto& inst = m_engine.instrument(i);
 
         // Index
