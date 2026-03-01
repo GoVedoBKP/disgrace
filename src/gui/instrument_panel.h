@@ -8,6 +8,7 @@
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Choice.H>
 #include <FL/Fl_Check_Button.H>
+#include <FL/Fl_Value_Input.H>
 #include "waveform_view.h"
 
 namespace disgrace_ns {
@@ -21,6 +22,10 @@ public:
 
     void update_instrument_list();
     void update_editor();
+
+    static void cb_cut(Fl_Widget*, void*);
+    static void cb_copy(Fl_Widget*, void*);
+    static void cb_paste(Fl_Widget*, void*);
 
 private:
     Engine& m_engine;
@@ -58,6 +63,18 @@ private:
     Fl_Choice* m_view_mode_ch;
     Fl_Choice* m_sample_fmt_ch;
 
+    Fl_Button* m_cut_btn;
+    Fl_Button* m_copy_btn;
+    Fl_Button* m_paste_btn;
+    Fl_Button* m_silence_btn;
+    Fl_Button* m_fade_in_lin_btn;
+    Fl_Button* m_fade_in_log_btn;
+    Fl_Button* m_fade_out_lin_btn;
+    Fl_Button* m_fade_out_log_btn;
+    Fl_Button* m_norm_btn;
+    Fl_Button* m_vol_btn;
+    Fl_Value_Input* m_vol_input;
+
     Fl_Button* m_detach_btn;
     DetachedWindow* m_detached_window = nullptr;
 
@@ -90,6 +107,14 @@ private:
     static void cb_view_sel(Fl_Widget*, void*);
     static void cb_view_mode(Fl_Widget*, void*);
     static void cb_sample_fmt(Fl_Widget*, void*);
+
+    static void cb_silence(Fl_Widget*, void*);
+    static void cb_fade_in_lin(Fl_Widget*, void*);
+    static void cb_fade_in_log(Fl_Widget*, void*);
+    static void cb_fade_out_lin(Fl_Widget*, void*);
+    static void cb_fade_out_log(Fl_Widget*, void*);
+    static void cb_normalize(Fl_Widget*, void*);
+    static void cb_adjust_vol(Fl_Widget*, void*);
 };
 
 } // namespace disgrace_ns

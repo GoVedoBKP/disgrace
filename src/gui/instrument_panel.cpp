@@ -109,28 +109,7 @@ InstrumentPanel::InstrumentPanel(int x, int y, int w, int h, Engine& engine)
     m_mono_btn = new Fl_Check_Button(split_x + margin, y + rec_y, 80, 25, "Mono");
     m_mono_btn->callback(cb_mono_toggle, this);
 
-    // Zoom and View Controls
-    int z_btn_w = 60;
-    m_zoom_in_btn = new Fl_Button(split_x + margin + 100, y + rec_y, z_btn_w, 25, "Zoom +");
-    m_zoom_in_btn->callback(cb_zoom_in, this);
-    m_zoom_out_btn = new Fl_Button(split_x + margin + 100 + z_btn_w + 2, y + rec_y, z_btn_w, 25, "Zoom -");
-    m_zoom_out_btn->callback(cb_zoom_out, this);
-    
-    rec_y += 25 + 2;
-    m_view_all_btn = new Fl_Button(split_x + margin, y + rec_y, 80, 25, "View All");
-    m_view_all_btn->callback(cb_view_all, this);
-    m_view_sel_btn = new Fl_Button(split_x + margin + 82, y + rec_y, 80, 25, "View Sel");
-    m_view_sel_btn->callback(cb_view_sel, this);
-
-    m_view_mode_ch = new Fl_Choice(split_x + margin + 165, y + rec_y, 80, 25, "View:");
-    m_view_mode_ch->add("Both");
-    m_view_mode_ch->add("Left");
-    m_view_mode_ch->add("Right");
-    m_view_mode_ch->value(0);
-    m_view_mode_ch->callback(cb_view_mode, this);
-
-    rec_y += 25 + margin;
-    m_sample_fmt_ch = new Fl_Choice(split_x + margin, y + rec_y, 180, 25, "Format:");
+    m_sample_fmt_ch = new Fl_Choice(split_x + margin + 100, y + rec_y, 150, 25, "Format:");
     m_sample_fmt_ch->add("Stereo -> Mono (L)");
     m_sample_fmt_ch->add("Stereo -> Mono (R)");
     m_sample_fmt_ch->add("Stereo -> Mono (Mix)");
@@ -138,11 +117,73 @@ InstrumentPanel::InstrumentPanel(int x, int y, int w, int h, Engine& engine)
     m_sample_fmt_ch->callback(cb_sample_fmt, this);
     m_sample_fmt_ch->align(FL_ALIGN_TOP_LEFT);
 
-    rec_y += 35 + margin;
+    rec_y += 25 + margin;
     
-    m_waveform_view = new WaveformView(split_x + margin, y + rec_y, w - split_x - 2 * margin, y + h - (y + rec_y) - margin);
+    // Waveform View - DOUBLED HEIGHT to 400
+    m_waveform_view = new WaveformView(split_x + margin, y + rec_y, w - split_x - 2 * margin, 400);
     m_waveform_view->set_color(m_engine.m_waveform_color);
     
+    rec_y += 400 + margin;
+
+    // Zoom and View Controls BELOW Waveform
+    int z_btn_w = 70;
+    m_zoom_in_btn = new Fl_Button(split_x + margin, y + rec_y, z_btn_w, 25, "Zoom +");
+    m_zoom_in_btn->callback(cb_zoom_in, this);
+    m_zoom_out_btn = new Fl_Button(split_x + margin + z_btn_w + 2, y + rec_y, z_btn_w, 25, "Zoom -");
+    m_zoom_out_btn->callback(cb_zoom_out, this);
+    
+    m_view_all_btn = new Fl_Button(split_x + margin + 2*(z_btn_w + 2), y + rec_y, z_btn_w, 25, "View All");
+    m_view_all_btn->callback(cb_view_all, this);
+    m_view_sel_btn = new Fl_Button(split_x + margin + 3*(z_btn_w + 2), y + rec_y, z_btn_w, 25, "View Sel");
+    m_view_sel_btn->callback(cb_view_sel, this);
+
+    m_view_mode_ch = new Fl_Choice(split_x + margin + 4*(z_btn_w + 2), y + rec_y, 80, 25, "View:");
+    m_view_mode_ch->add("Both");
+    m_view_mode_ch->add("Left");
+    m_view_mode_ch->add("Right");
+    m_view_mode_ch->value(0);
+    m_view_mode_ch->callback(cb_view_mode, this);
+
+    rec_y += 25 + margin;
+
+    // Sample Operations Section
+    Fl_Group* ops_grp = new Fl_Group(split_x + margin, y + rec_y, w - split_x - 2 * margin, 100, "Operations");
+    ops_grp->box(FL_ENGRAVED_FRAME);
+    ops_grp->align(FL_ALIGN_TOP_LEFT);
+    ops_grp->begin();
+    
+    int op_y = margin;
+    m_cut_btn = new Fl_Button(split_x + 2*margin, y + rec_y + op_y, 50, 25, "Cut");
+    m_cut_btn->callback(cb_cut, this);
+    m_copy_btn = new Fl_Button(split_x + 2*margin + 52, y + rec_y + op_y, 50, 25, "Copy");
+    m_copy_btn->callback(cb_copy, this);
+    m_paste_btn = new Fl_Button(split_x + 2*margin + 104, y + rec_y + op_y, 50, 25, "Paste");
+    m_paste_btn->callback(cb_paste, this);
+    
+    m_silence_btn = new Fl_Button(split_x + 2*margin + 156, y + rec_y + op_y, 60, 25, "Silence");
+    m_silence_btn->callback(cb_silence, this);
+    
+    m_norm_btn = new Fl_Button(split_x + 2*margin + 218, y + rec_y + op_y, 80, 25, "Normalize");
+    m_norm_btn->callback(cb_normalize, this);
+
+    m_vol_btn = new Fl_Button(split_x + 2*margin + 300, y + rec_y + op_y, 50, 25, "Gain");
+    m_vol_btn->callback(cb_adjust_vol, this);
+    m_vol_input = new Fl_Value_Input(split_x + 2*margin + 352, y + rec_y + op_y, 40, 25);
+    m_vol_input->value(1.0);
+
+    op_y += 25 + 5;
+    m_fade_in_lin_btn = new Fl_Button(split_x + 2*margin, y + rec_y + op_y, 80, 25, "Fade In Lin");
+    m_fade_in_lin_btn->callback(cb_fade_in_lin, this);
+    m_fade_in_log_btn = new Fl_Button(split_x + 2*margin + 85, y + rec_y + op_y, 80, 25, "Fade In Log");
+    m_fade_in_log_btn->callback(cb_fade_in_log, this);
+
+    m_fade_out_lin_btn = new Fl_Button(split_x + 2*margin + 170, y + rec_y + op_y, 80, 25, "Fade Out Lin");
+    m_fade_out_lin_btn->callback(cb_fade_out_lin, this);
+    m_fade_out_log_btn = new Fl_Button(split_x + 2*margin + 255, y + rec_y + op_y, 80, 25, "Fade Out Log");
+    m_fade_out_log_btn->callback(cb_fade_out_log, this);
+
+    ops_grp->end();
+
     m_sampler_rec_grp->end();
 
     m_sampler_editor->end();
@@ -239,6 +280,7 @@ void InstrumentPanel::update_editor() {
     auto& inst = m_engine.instrument(m_selected_instrument);
     if (inst.type() == InstrumentType::Sampler) {
         m_sampler_editor->show();
+        
         m_sample_container->clear();
         m_sample_container->begin();
         
@@ -460,6 +502,143 @@ void InstrumentPanel::cb_sample_fmt(Fl_Widget* w, void* data) {
     SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
     SampleFormatAction action = (SampleFormatAction)static_cast<Fl_Choice*>(w)->value();
     sampler->convert_sample_format(self->m_selected_sample, action);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_copy(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    
+    size_t s1 = self->m_waveform_view->selection_start();
+    size_t s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); }
+    else { if (s1 > s2) std::swap(s1, s2); }
+    
+    auto clipboard_data = std::make_shared<SampleData>();
+    clipboard_data->sample_rate = sample.data->sample_rate;
+    clipboard_data->left.assign(sample.data->left.begin() + s1, sample.data->left.begin() + s2);
+    if (!sample.data->right.empty()) {
+        clipboard_data->right.assign(sample.data->right.begin() + s1, sample.data->right.begin() + s2);
+    }
+    self->m_engine.sample_clipboard().data = clipboard_data;
+}
+
+void InstrumentPanel::cb_cut(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    
+    size_t s1 = self->m_waveform_view->selection_start();
+    size_t s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); }
+    else { if (s1 > s2) std::swap(s1, s2); }
+    
+    self->m_engine.sample_clipboard().data = std::make_shared<SampleData>(sample.data->cut(s1, s2));
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_paste(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0 || !self->m_engine.sample_clipboard().data) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    
+    size_t pos = self->m_waveform_view->selection_start();
+    sample.data->paste_at(pos, *self->m_engine.sample_clipboard().data);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_silence(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    
+    size_t s1 = self->m_waveform_view->selection_start();
+    size_t s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); }
+    else { if (s1 > s2) std::swap(s1, s2); }
+    
+    sample.data->silence(s1, s2);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_fade_in_lin(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    size_t s1 = self->m_waveform_view->selection_start(), s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); } else if (s1 > s2) std::swap(s1, s2);
+    sample.data->fade_in(s1, s2, false);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_fade_in_log(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    size_t s1 = self->m_waveform_view->selection_start(), s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); } else if (s1 > s2) std::swap(s1, s2);
+    sample.data->fade_in(s1, s2, true);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_fade_out_lin(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    size_t s1 = self->m_waveform_view->selection_start(), s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); } else if (s1 > s2) std::swap(s1, s2);
+    sample.data->fade_out(s1, s2, false);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_fade_out_log(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    size_t s1 = self->m_waveform_view->selection_start(), s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); } else if (s1 > s2) std::swap(s1, s2);
+    sample.data->fade_out(s1, s2, true);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_normalize(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    size_t s1 = self->m_waveform_view->selection_start(), s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); } else if (s1 > s2) std::swap(s1, s2);
+    sample.data->normalize(s1, s2);
+    self->update_editor();
+}
+
+void InstrumentPanel::cb_adjust_vol(Fl_Widget*, void* data) {
+    auto* self = static_cast<InstrumentPanel*>(data);
+    if (self->m_selected_sample < 0) return;
+    SampleInstrument* sampler = static_cast<SampleInstrument*>(&self->m_engine.instrument(self->m_selected_instrument));
+    auto& sample = sampler->get_sample(self->m_selected_sample);
+    if (!sample.data) return;
+    size_t s1 = self->m_waveform_view->selection_start(), s2 = self->m_waveform_view->selection_end();
+    if (s1 == s2) { s1 = 0; s2 = sample.data->left.size(); } else if (s1 > s2) std::swap(s1, s2);
+    sample.data->adjust_volume(s1, s2, (float)self->m_vol_input->value());
     self->update_editor();
 }
 

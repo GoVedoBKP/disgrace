@@ -31,6 +31,11 @@ struct BlockClipboard
     ::std::vector<uint8_t> notes;
 };
 
+struct SampleClipboard
+{
+    std::shared_ptr<SampleData> data;
+};
+
 class Transport;
 class AudioBackend;
 
@@ -102,6 +107,7 @@ public:
     size_t current_order_pos() const;
     disgrace_ns::UndoStack& undo_stack();
     disgrace_ns::BlockClipboard& clipboard();
+    disgrace_ns::SampleClipboard& sample_clipboard() { return m_sample_clipboard; }
 
     disgrace_ns::MidiQueue<disgrace_ns::MidiMessage, 1024> m_midi_queue;
     disgrace_ns::MidiInput m_midi;
@@ -157,6 +163,7 @@ private:
     bool m_initialized;
     ::std::unique_ptr<disgrace_ns::AudioBackend> m_backend;
     disgrace_ns::BlockClipboard m_clipboard;
+    disgrace_ns::SampleClipboard m_sample_clipboard;
     ::std::atomic<bool> m_playing{false};
     ::std::atomic<bool> m_loop_pattern{false};
 

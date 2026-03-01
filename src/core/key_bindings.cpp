@@ -25,7 +25,7 @@ void KeyBindings::set_defaults() {
     add_default(Action::Redo, 'y', FL_CTRL);
     add_default(Action::Copy, 'c', FL_CTRL);
     add_default(Action::Cut, 'x', FL_CTRL);
-    add_default(Action::Paste, 'v', FL_CTRL);
+    add_default(Action::Paste, 'p', FL_CTRL);
     add_default(Action::Clear, FL_Delete);
     add_default(Action::MoveUp, FL_Up);
     add_default(Action::MoveDown, FL_Down);

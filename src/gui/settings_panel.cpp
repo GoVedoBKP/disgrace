@@ -40,14 +40,14 @@ SettingsPanel::SettingsPanel(int x, int y, int w, int h, Engine& engine)
     
     begin();
 
-    m_sub_tabs = new Fl_Tabs(0, 0, w, h);
+    m_sub_tabs = new Fl_Tabs(x, y, w, h);
     
-    init_audio_grp(0, 0, w, h);
-    init_midi_grp(0, 0, w, h);
-    init_mixer_grp(0, 0, w, h);
-    init_gui_grp(0, 0, w, h);
-    init_kbd_grp(0, 0, w, h);
-    init_misc_grp(0, 0, w, h);
+    init_audio_grp(x, y, w, h);
+    init_midi_grp(x, y, w, h);
+    init_mixer_grp(x, y, w, h);
+    init_gui_grp(x, y, w, h);
+    init_kbd_grp(x, y, w, h);
+    init_misc_grp(x, y, w, h);
 
     m_sub_tabs->end();
     resizable(m_sub_tabs);
@@ -166,24 +166,6 @@ void SettingsPanel::init_gui_grp(int x, int y, int w, int h) {
     m_gui_grp->end();
 }
 
-void SettingsPanel::cb_waveform_color(Fl_Widget*, void* data) {
-    auto* self = static_cast<SettingsPanel*>(data);
-    unsigned char r, g, b;
-    unsigned int c = self->m_engine.m_waveform_color;
-    r = (c >> 24) & 0xFF;
-    g = (c >> 16) & 0xFF;
-    b = (c >> 8) & 0xFF;
-    
-    if (fl_color_chooser("Waveform Color", r, g, b)) {
-        self->m_engine.m_waveform_color = fl_rgb_color(r, g, b);
-        // Force update of waveform views
-        for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
-            MainWindow* mw = dynamic_cast<MainWindow*>(win);
-            if (mw) mw->update_all_uis();
-        }
-    }
-}
-
 void SettingsPanel::init_kbd_grp(int x, int y, int w, int h) {
     m_kbd_grp = new Fl_Group(x, y + 25, w, h - 25, "Keyboard");
     m_kbd_grp->begin();
@@ -300,6 +282,24 @@ void SettingsPanel::cb_gui_font_size(Fl_Widget* w, void* data) {
     if (val) {
         self->m_engine.m_gui_font_size = atoi(val);
         apply_gui_settings(self->m_engine);
+    }
+}
+
+void SettingsPanel::cb_waveform_color(Fl_Widget*, void* data) {
+    auto* self = static_cast<SettingsPanel*>(data);
+    unsigned char r, g, b;
+    unsigned int c = self->m_engine.m_waveform_color;
+    // Extract RGB from 0xRRGGBB00 (FLTK rgb format)
+    r = (c >> 24) & 0xFF;
+    g = (c >> 16) & 0xFF;
+    b = (c >> 8) & 0xFF;
+    
+    if (fl_color_chooser("Waveform Color", r, g, b)) {
+        self->m_engine.m_waveform_color = fl_rgb_color(r, g, b);
+        for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+            MainWindow* mw = dynamic_cast<MainWindow*>(win);
+            if (mw) mw->update_all_uis();
+        }
     }
 }
 

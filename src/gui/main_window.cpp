@@ -111,6 +111,27 @@ void disgrace_ns::MainWindow::timer_cb(void* data)
           m_engine.toggle_metronome();
           return 1;
         
+        case Action::Cut:
+          if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
+              m_instrument_panel->cb_cut(nullptr, m_instrument_panel);
+              return 1;
+          }
+          break;
+
+        case Action::Copy:
+          if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
+              m_instrument_panel->cb_copy(nullptr, m_instrument_panel);
+              return 1;
+          }
+          break;
+
+        case Action::Paste:
+          if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
+              m_instrument_panel->cb_paste(nullptr, m_instrument_panel);
+              return 1;
+          }
+          break;
+
         default:
           break;
       }
