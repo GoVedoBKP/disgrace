@@ -397,14 +397,20 @@ void InstrumentPanel::cb_new(Fl_Widget*, void* data) {
     self->m_engine.add_instrument();
     self->m_selected_instrument = (int)self->m_engine.instrument_count() - 1;
     self->m_selected_sample = -1;
-    self->update_instrument_list(); self->update_editor();
+    for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+        MainWindow* mw = dynamic_cast<MainWindow*>(win);
+        if (mw) mw->update_all_uis();
+    }
 }
 
 void InstrumentPanel::cb_inst_select(Fl_Widget*, void* data) {
     auto* pair = static_cast<std::pair<InstrumentPanel*, size_t>*>(data);
     pair->first->m_selected_instrument = (int)pair->second;
     pair->first->m_selected_sample = -1;
-    pair->first->update_instrument_list(); pair->first->update_editor();
+    for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+        MainWindow* mw = dynamic_cast<MainWindow*>(win);
+        if (mw) mw->update_all_uis();
+    }
     delete pair;
 }
 
@@ -453,7 +459,10 @@ void InstrumentPanel::cb_delete(Fl_Widget*, void* data) {
         if (fl_ask("Delete selected instrument?")) {
             self->m_engine.remove_instrument(self->m_selected_instrument);
             self->m_selected_instrument = -1; self->m_selected_sample = -1;
-            self->update_instrument_list(); self->update_editor();
+            for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+                MainWindow* mw = dynamic_cast<MainWindow*>(win);
+                if (mw) mw->update_all_uis();
+            }
         }
     }
 }
@@ -461,6 +470,10 @@ void InstrumentPanel::cb_delete(Fl_Widget*, void* data) {
 void InstrumentPanel::cb_inst_name(Fl_Widget* w, void* data) {
     auto* pair = static_cast<std::pair<InstrumentPanel*, size_t>*>(data);
     pair->first->m_engine.instrument(pair->second).set_name(static_cast<Fl_Input*>(w)->value());
+    for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+        MainWindow* mw = dynamic_cast<MainWindow*>(win);
+        if (mw) mw->update_all_uis();
+    }
 }
 
 void InstrumentPanel::cb_inst_type(Fl_Widget* w, void* data) {
@@ -468,7 +481,10 @@ void InstrumentPanel::cb_inst_type(Fl_Widget* w, void* data) {
     pair->first->m_engine.set_instrument_type(pair->second, (InstrumentType)static_cast<Fl_Choice*>(w)->value());
     pair->first->m_selected_instrument = (int)pair->second;
     pair->first->m_selected_sample = -1;
-    pair->first->update_instrument_list(); pair->first->update_editor();
+    for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+        MainWindow* mw = dynamic_cast<MainWindow*>(win);
+        if (mw) mw->update_all_uis();
+    }
 }
 
 void InstrumentPanel::cb_add_sample(Fl_Widget*, void* data) {

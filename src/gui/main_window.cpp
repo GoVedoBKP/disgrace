@@ -71,7 +71,10 @@ void disgrace_ns::MainWindow::update_all_uis() {
     if (m_mixer_panel) m_mixer_panel->update_mixer_ui();
     if (m_tracker_panel) m_tracker_panel->update_pattern_list_browser();
     if (m_project_panel) m_project_panel->update_track_list();
-    if (m_instrument_panel) m_instrument_panel->update_instrument_list();
+    if (m_instrument_panel) {
+        m_instrument_panel->update_instrument_list();
+        m_instrument_panel->update_editor();
+    }
 }
 
 void disgrace_ns::MainWindow::timer_cb(void* data)

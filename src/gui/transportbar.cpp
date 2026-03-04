@@ -50,14 +50,6 @@ TransportBar::TransportBar(int X, int Y, int W, int H, Engine& engine)
     }, &m_engine);
     x += 80;
 
-    Fl_Button* add_track_btn = new Fl_Button(x, Y+5, 80, 25, "+ Track");
-    add_track_btn->callback([](Fl_Widget*, void* d){
-        ((Engine*)d)->add_track();
-        // We need to notify MainWindow to update all UIs
-        // but for now, the timer_cb should handle periodic updates if implemented
-    }, &m_engine);
-    x += 90;
-
     m_status = new Fl_Box(x, Y+5, 100, 25, "Stopped");
     x += 110;
     m_meter_l = new VUMeter(x, Y+5, 100, 10, nullptr, true);
