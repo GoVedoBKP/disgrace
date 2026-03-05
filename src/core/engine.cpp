@@ -51,6 +51,8 @@ void Engine::new_project() {
     
     m_order.clear();
     m_order.push_back(0);
+    m_order_start.store(0);
+    m_order_end.store(0);
     
     m_active_pattern.store(0);
     m_current_row = 0;
@@ -69,6 +71,34 @@ bool Engine::audio_active() const { return m_initialized; }
 void Engine::start() { transport().play(); }
 void Engine::stop() { transport().stop(); }
 void Engine::play() { transport().play(); }
+
+void Engine::play_song() {
+    stop();
+    m_order_pos.store(0);
+    if (!m_order.empty()) {
+        set_active_pattern(m_order[0]);
+    }
+    m_current_row = 0;
+    m_current_tick = 0;
+    set_loop(false);
+    start();
+}
+
+void Engine::play_pattern() {
+    stop();
+    m_current_row = 0;
+    m_current_tick = 0;
+    set_loop(true);
+    start();
+}
+
+void Engine::play_from_position(size_t row) {
+    stop();
+    m_current_row = row;
+    m_current_tick = 0;
+    set_loop(true);
+    start();
+}
 
 void Engine::preview_note(size_t t, uint8_t note) {
     if (t < m_tracks.size()) m_tracks[t].note_on(note, 100);
@@ -105,7 +135,25 @@ void Engine::process_tick()
             if (c == 0) handle_effect_row_start(t, ev);
         }
     }
-    m_current_row = (m_current_row + 1) % pat.row_count(); 
+    m_current_row++;
+    if (m_current_row >= pat.row_count()) {
+        m_current_row = 0;
+        if (!transport().m_loop_pattern.load()) {
+            // Song mode or range loop
+            size_t next_order_pos = m_order_pos.load() + 1;
+            size_t end_pos = m_order_end.load();
+            if (end_pos == 0 && !m_order.empty()) end_pos = m_order.size() - 1;
+
+            if (next_order_pos > end_pos) {
+                next_order_pos = m_order_start.load();
+            }
+            
+            if (next_order_pos < m_order.size()) {
+                m_order_pos.store(next_order_pos);
+                set_active_pattern(m_order[next_order_pos]);
+            }
+        }
+    }
 }
 
 void Engine::handle_effect_row_start(size_t t, const TrackEvent& ev)

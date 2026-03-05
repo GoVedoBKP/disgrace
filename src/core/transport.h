@@ -32,11 +32,12 @@ public:
     void set_play_position(size_t pattern,
                            size_t row);
 
+    ::std::atomic<bool> m_loop_pattern{true};
+
 private:
     Engine& m_engine;
     ::std::atomic<double> m_tempo;
     ::std::atomic<TransportState> m_transport{TransportState::Stopped};
-    ::std::atomic<bool> m_loop_pattern{true};
 };
 
 } // namespace disgrace_ns

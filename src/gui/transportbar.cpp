@@ -10,10 +10,6 @@ TransportBar::TransportBar(int X, int Y, int W, int H, Engine& engine)
 {
     int x = X + 10;
 
-    m_record = new Fl_Light_Button(x, Y+5, 80, 25, "Record");
-    m_record->callback(cb_record, this);
-    x += 90;
-
     m_play = new Fl_Button(x, Y+5, 60, 25, "Play");
     m_play->callback(cb_play, this);
     x += 70;
@@ -21,6 +17,10 @@ TransportBar::TransportBar(int X, int Y, int W, int H, Engine& engine)
     m_stop = new Fl_Button(x, Y+5, 60, 25, "Stop");
     m_stop->callback(cb_stop, this);
     x += 70;
+
+    m_record = new Fl_Light_Button(x, Y+5, 80, 25, "Edit");
+    m_record->callback(cb_record, this);
+    x += 90;
 
     Fl_Check_Button* loop_btn = new Fl_Check_Button(x, Y+5, 70, 25, "Loop");
     loop_btn->value(1);

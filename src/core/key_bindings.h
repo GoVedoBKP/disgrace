@@ -8,6 +8,10 @@ namespace disgrace_ns {
 
 enum class Action {
     Play,
+    PlaySong,
+    PlayPattern,
+    PlayFromPosition,
+    Stop,
     Record,
     ToggleMetronome,
     Undo,

@@ -5,7 +5,8 @@ enum class EngineCommandType
 {
     Play,
     Stop,
-    SetTempo
+    SetTempo,
+    PlayPattern
 };
 
 struct EngineCommand

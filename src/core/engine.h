@@ -55,6 +55,9 @@ public:
     void start();
     void stop();
     void play();
+    void play_song();
+    void play_pattern();
+    void play_from_position(size_t row);
 
     disgrace_ns::Transport& transport();
     const disgrace_ns::Transport& transport() const;
@@ -84,6 +87,9 @@ public:
     size_t m_samples_until_next_tick = 0;
     int    m_current_tick = 0;
     size_t m_current_row = 0;
+    ::std::atomic<size_t> m_order_pos{0};
+    ::std::atomic<size_t> m_order_start{0};
+    ::std::atomic<size_t> m_order_end{0};
 
     void handle_effect_row_start(size_t track_index, const disgrace_ns::TrackEvent& ev);
 

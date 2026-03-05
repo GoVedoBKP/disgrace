@@ -19,6 +19,10 @@ void KeyBindings::set_defaults() {
     };
 
     add_default(Action::Play, ' ');
+    add_default(Action::PlaySong, FL_F + 5);
+    add_default(Action::PlayPattern, FL_F + 6);
+    add_default(Action::PlayFromPosition, FL_F + 7);
+    add_default(Action::Stop, FL_F + 8);
     add_default(Action::Record, 'r');
     add_default(Action::ToggleMetronome, 'm');
     add_default(Action::Undo, 'z', FL_CTRL);
@@ -76,7 +80,11 @@ void KeyBindings::assign(Action action, int key, int modifiers) {
 std::string KeyBindings::get_action_name(Action action) const {
     switch (action) {
         case Action::Play: return "Play/Pause";
-        case Action::Record: return "Record";
+        case Action::PlaySong: return "Play Song";
+        case Action::PlayPattern: return "Play Pattern";
+        case Action::PlayFromPosition: return "Play From Position";
+        case Action::Stop: return "Stop";
+        case Action::Record: return "Edit";
         case Action::ToggleMetronome: return "Toggle Metronome";
         case Action::Undo: return "Undo";
         case Action::Redo: return "Redo";

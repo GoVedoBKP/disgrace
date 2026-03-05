@@ -362,6 +362,17 @@ int TrackerView::handle(int event) {
                 }
             }
 
+            switch (action) {
+                case Action::Play: m_engine.transport().toggle_play(); return 1;
+                case Action::PlaySong: m_engine.play_song(); return 1;
+                case Action::PlayPattern: m_engine.play_pattern(); return 1;
+                case Action::PlayFromPosition: m_engine.play_from_position(m_cursor_row); return 1;
+                case Action::Stop: m_engine.stop(); return 1;
+                case Action::Record: m_engine.enable_record(!m_engine.m_record_enabled); return 1;
+                case Action::ToggleMetronome: m_engine.toggle_metronome(); return 1;
+                default: break;
+            }
+
             if (shift && !m_sel_active) { m_sel_active = true; m_sel_start_row = m_cursor_row; m_sel_start_track = m_cursor_track; }
             
             int num_note_cols = (int)m_pattern->column_count(m_cursor_track);
