@@ -47,6 +47,7 @@ disgrace_SOURCES = \
     io/song_serializer.cpp \
     midi/midi_input.cpp \
     mixer/track.cpp \
+    mixer/mixer_bus.cpp \
     sequencer/automation.cpp \
     sequencer/pattern.cpp \
     sequencer/sequencer.cpp \

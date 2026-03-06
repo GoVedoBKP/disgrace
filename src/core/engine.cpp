@@ -42,6 +42,7 @@ void Engine::shutdown() {
 
 void Engine::new_project() {
     m_tracks.clear();
+    m_buses.clear();
     
     m_instruments.clear();
     add_instrument();
@@ -283,6 +284,12 @@ void Engine::process_block(float* l, float* r, size_t nframes) {
 void Engine::render_block(float* out_l, float* out_r, size_t frames) {
     for (size_t i = 0; i < frames; ++i) { out_l[i] = 0.f; out_r[i] = 0.f; }
     
+    // Clear bus buffers
+    for (size_t b = 0; b < m_buses.size() && b < MAX_BUSES_INTERNAL; ++b) {
+        std::fill(m_bus_l[b], m_bus_l[b] + frames, 0.f);
+        std::fill(m_bus_r[b], m_bus_r[b] + frames, 0.f);
+    }
+
     bool any_solo = false;
     for (size_t t = 0; t < m_tracks.size(); ++t) {
         if (m_tracks[t].solo()) { any_solo = true; break; }
@@ -299,9 +306,43 @@ void Engine::render_block(float* out_l, float* out_r, size_t frames) {
         }
 
         if (should_play) {
+            int out_idx = m_tracks[t].output_bus();
+            if (out_idx >= 0 && (size_t)out_idx < m_buses.size() && (size_t)out_idx < MAX_BUSES_INTERNAL) {
+                for (size_t i = 0; i < frames; ++i) {
+                    m_bus_l[out_idx][i] += m_track_l[t][i];
+                    m_bus_r[out_idx][i] += m_track_r[t][i];
+                }
+            } else {
+                for (size_t i = 0; i < frames; ++i) {
+                    out_l[i] += m_track_l[t][i];
+                    out_r[i] += m_track_r[t][i];
+                }
+            }
+        }
+    }
+
+    // Process buses
+    for (size_t b = 0; b < m_buses.size() && b < MAX_BUSES_INTERNAL; ++b) {
+        m_buses[b].process(m_bus_l[b], m_bus_r[b], frames);
+        
+        int out_idx = m_buses[b].output_bus();
+        if (out_idx >= 0 && (size_t)out_idx < m_buses.size() && (size_t)out_idx < MAX_BUSES_INTERNAL) {
+            // Forward routing only to prevent feedback loops
+            if ((size_t)out_idx > b) {
+                for (size_t i = 0; i < frames; ++i) {
+                    m_bus_l[out_idx][i] += m_bus_l[b][i];
+                    m_bus_r[out_idx][i] += m_bus_r[b][i];
+                }
+            } else {
+                for (size_t i = 0; i < frames; ++i) {
+                    out_l[i] += m_bus_l[b][i];
+                    out_r[i] += m_bus_r[b][i];
+                }
+            }
+        } else {
             for (size_t i = 0; i < frames; ++i) {
-                out_l[i] += m_track_l[t][i];
-                out_r[i] += m_track_r[t][i];
+                out_l[i] += m_bus_l[b][i];
+                out_r[i] += m_bus_r[b][i];
             }
         }
     }
@@ -340,6 +381,15 @@ void Engine::remove_track(size_t index) { if (index < m_tracks.size()) m_tracks.
 void Engine::move_track(size_t from, size_t to) {
     if (from < m_tracks.size() && to < m_tracks.size()) std::swap(m_tracks[from], m_tracks[to]);
 }
+size_t Engine::bus_count() const { return m_buses.size(); }
+MixerBus& Engine::bus(size_t index) { return m_buses[index]; }
+const MixerBus& Engine::bus(size_t index) const { return m_buses[index]; }
+void Engine::add_bus() { m_buses.emplace_back(); }
+void Engine::remove_bus(size_t index) { if (index < m_buses.size()) m_buses.erase(m_buses.begin() + index); }
+void Engine::move_bus(size_t from, size_t to) {
+    if (from < m_buses.size() && to < m_buses.size()) std::swap(m_buses[from], m_buses[to]);
+}
+
 size_t Engine::track_count() const { return m_tracks.size(); }
 Track& Engine::track(size_t index) { return m_tracks[index]; }
 const Track& Engine::track(size_t index) const { return m_tracks[index]; }

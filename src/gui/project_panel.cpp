@@ -43,6 +43,9 @@ ProjectPanel::ProjectPanel(int x, int y, int w, int h, Engine& engine)
     m_add_track_btn = new Fl_Button(x + left_w + margin, y + rcur_y, 100, 25, "+ Add Track");
     m_add_track_btn->callback(cb_add_track, this);
 
+    m_add_bus_btn = new Fl_Button(x + left_w + margin + 110, y + rcur_y, 100, 25, "+ Add Bus");
+    m_add_bus_btn->callback(cb_add_bus, this);
+
     rcur_y += 25 + margin;
 
     m_track_scroll = new Fl_Scroll(x + left_w + margin, y + rcur_y, w - left_w - 2 * margin, h - rcur_y - margin);
@@ -129,24 +132,25 @@ void ProjectPanel::update_track_list() {
 
     size_t num_tracks = m_engine.track_count();
     size_t num_insts = m_engine.instrument_count();
+    size_t num_buses = m_engine.bus_count();
 
     for (size_t i = 0; i < num_tracks; ++i) {
         int cur_x = m_track_container->x();
         int row_y = cur_y + (int)(i * row_h);
         
-        char idx_str[8];
-        snprintf(idx_str, 8, "%zu:", i + 1);
-        new Fl_Box(cur_x, row_y, label_w, row_h, strdup(idx_str));
-        cur_x += label_w + 5;
+        char idx_str[16];
+        snprintf(idx_str, 16, "TRK %zu:", i + 1);
+        new Fl_Box(cur_x, row_y, label_w + 30, row_h, strdup(idx_str));
+        cur_x += label_w + 35;
 
-        Fl_Input* name_in = new Fl_Input(cur_x, row_y + 5, input_w, 25);
+        Fl_Input* name_in = new Fl_Input(cur_x, row_y + 5, input_w - 50, 25);
         name_in->value(m_engine.track(i).name().c_str());
         name_in->maximum_size(32);
         name_in->callback(cb_track_name, new std::pair<ProjectPanel*, size_t>(this, i));
         name_in->when(FL_WHEN_ENTER_KEY | FL_WHEN_RELEASE);
-        cur_x += input_w + 5;
+        cur_x += input_w - 50 + 5;
 
-        Fl_Choice* inst_ch = new Fl_Choice(cur_x, row_y + 5, choice_w, 25);
+        Fl_Choice* inst_ch = new Fl_Choice(cur_x, row_y + 5, choice_w - 20, 25);
         inst_ch->add("None");
         for (size_t j = 0; j < num_insts; ++j) {
             inst_ch->add(m_engine.instrument(j).name().c_str());
@@ -155,24 +159,64 @@ void ProjectPanel::update_track_list() {
         int inst_idx = m_engine.get_instrument_index(m_engine.track(i).instrument());
         inst_ch->value(inst_idx + 1);
         inst_ch->callback(cb_track_inst, new std::pair<ProjectPanel*, size_t>(this, i));
-        cur_x += choice_w + 5;
+        cur_x += choice_w - 20 + 5;
 
-        Fl_Button* up = new Fl_Button(cur_x, row_y + 5, btn_w, 25, "Up");
-        up->labelsize(10);
+        Fl_Choice* out_ch = new Fl_Choice(cur_x, row_y + 5, 80, 25);
+        out_ch->add("Master");
+        for (size_t j = 0; j < num_buses; ++j) {
+            char b_name[32]; snprintf(b_name, 32, "Bus %zu", j + 1);
+            out_ch->add(b_name);
+        }
+        out_ch->value(m_engine.track(i).output_bus() + 1);
+        out_ch->callback(cb_track_output, new std::pair<ProjectPanel*, size_t>(this, i));
+        cur_x += 80 + 5;
+
+        Fl_Button* up = new Fl_Button(cur_x, row_y + 5, btn_w, 25, "@8<");
         up->callback(cb_move_track_up, new std::pair<ProjectPanel*, size_t>(this, i));
         cur_x += btn_w + 2;
 
-        Fl_Button* down = new Fl_Button(cur_x, row_y + 5, btn_w, 25, "Dn");
-        down->labelsize(10);
+        Fl_Button* down = new Fl_Button(cur_x, row_y + 5, btn_w, 25, "@2<");
         down->callback(cb_move_track_down, new std::pair<ProjectPanel*, size_t>(this, i));
-        cur_x += btn_w + 10;
+        cur_x += btn_w + 5;
 
         Fl_Button* rem = new Fl_Button(cur_x, row_y + 5, btn_w, 25, "X");
         rem->callback(cb_remove_track, new std::pair<ProjectPanel*, size_t>(this, i));
     }
 
+    cur_y += (int)(num_tracks * row_h) + 10;
+
+    for (size_t i = 0; i < num_buses; ++i) {
+        int cur_x = m_track_container->x();
+        int row_y = cur_y + (int)(i * row_h);
+
+        char idx_str[16];
+        snprintf(idx_str, 16, "BUS %zu:", i + 1);
+        new Fl_Box(cur_x, row_y, label_w + 30, row_h, strdup(idx_str));
+        cur_x += label_w + 35;
+
+        Fl_Input* name_in = new Fl_Input(cur_x, row_y + 5, input_w - 50, 25);
+        name_in->value(m_engine.bus(i).name().c_str());
+        name_in->callback(cb_bus_name, new std::pair<ProjectPanel*, size_t>(this, i));
+        name_in->when(FL_WHEN_ENTER_KEY | FL_WHEN_RELEASE);
+        cur_x += input_w - 50 + 5;
+        
+        // Buses can route to other buses (forward only) or Master
+        Fl_Choice* out_ch = new Fl_Choice(cur_x, row_y + 5, 80, 25);
+        out_ch->add("Master");
+        for (size_t j = 0; j < num_buses; ++j) {
+            char b_name[32]; snprintf(b_name, 32, "Bus %zu", j + 1);
+            out_ch->add(b_name);
+        }
+        out_ch->value(m_engine.bus(i).output_bus() + 1);
+        out_ch->callback(cb_bus_output, new std::pair<ProjectPanel*, size_t>(this, i));
+        cur_x += 80 + 5 + 130 + 5; // Skip inst and up/down for now or keep space
+
+        Fl_Button* rem = new Fl_Button(cur_x, row_y + 5, btn_w, 25, "X");
+        rem->callback(cb_remove_bus, new std::pair<ProjectPanel*, size_t>(this, i));
+    }
+
     m_track_container->end();
-    m_track_container->size(m_track_container->w(), (int)(num_tracks * row_h + 20));
+    m_track_container->size(m_track_container->w(), (int)((num_tracks + num_buses) * row_h + 50));
     m_track_scroll->redraw();
 }
 
@@ -219,6 +263,44 @@ void ProjectPanel::cb_track_inst(Fl_Widget* w, void* data) {
         MainWindow* mw = dynamic_cast<MainWindow*>(win);
         if (mw) mw->request_update();
     }
+}
+
+void ProjectPanel::cb_track_output(Fl_Widget* w, void* data) {
+    auto* pair = static_cast<std::pair<ProjectPanel*, size_t>*>(data);
+    Fl_Choice* ch = static_cast<Fl_Choice*>(w);
+    pair->first->m_engine.track(pair->second).set_output_bus(ch->value() - 1);
+}
+
+void ProjectPanel::cb_add_bus(Fl_Widget*, void* data) {
+    auto* self = static_cast<ProjectPanel*>(data);
+    self->m_engine.add_bus();
+    for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+        MainWindow* mw = dynamic_cast<MainWindow*>(win);
+        if (mw) mw->request_update();
+    }
+}
+
+void ProjectPanel::cb_remove_bus(Fl_Widget*, void* data) {
+    auto* pair = static_cast<std::pair<ProjectPanel*, size_t>*>(data);
+    if (fl_ask("Remove bus %zu?", pair->second + 1)) {
+        pair->first->m_engine.remove_bus(pair->second);
+        for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+            MainWindow* mw = dynamic_cast<MainWindow*>(win);
+            if (mw) mw->request_update();
+        }
+    }
+}
+
+void ProjectPanel::cb_bus_name(Fl_Widget* w, void* data) {
+    auto* pair = static_cast<std::pair<ProjectPanel*, size_t>*>(data);
+    Fl_Input* in = static_cast<Fl_Input*>(w);
+    pair->first->m_engine.bus(pair->second).set_name(in->value());
+}
+
+void ProjectPanel::cb_bus_output(Fl_Widget* w, void* data) {
+    auto* pair = static_cast<std::pair<ProjectPanel*, size_t>*>(data);
+    Fl_Choice* ch = static_cast<Fl_Choice*>(w);
+    pair->first->m_engine.bus(pair->second).set_output_bus(ch->value() - 1);
 }
 
 void ProjectPanel::cb_move_track_up(Fl_Widget*, void* data) {

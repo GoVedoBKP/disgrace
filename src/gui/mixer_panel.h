@@ -29,6 +29,7 @@ private:
     VUMeter* m_master_meter_r;
     SpectralView* m_spectral_view;
     std::vector<std::pair<VUMeter*, VUMeter*>> m_track_meters;
+    std::vector<std::pair<VUMeter*, VUMeter*>> m_bus_meters;
     Fl_Button* m_detach_btn;
     DetachedWindow* m_detached_window = nullptr;
 
@@ -37,6 +38,11 @@ private:
     static void cb_track_pan(Fl_Widget*, void*);
     static void cb_track_mute(Fl_Widget*, void*);
     static void cb_track_solo(Fl_Widget*, void*);
+    
+    static void cb_bus_volume(Fl_Widget*, void*);
+    static void cb_bus_pan(Fl_Widget*, void*);
+    static void cb_bus_mute(Fl_Widget*, void*);
+
     static void cb_detach(Fl_Widget*, void*);
 };
 

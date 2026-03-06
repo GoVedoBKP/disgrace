@@ -78,6 +78,9 @@ public:
     bool solo() const;
     void set_solo(bool s); // Add this
 
+    void set_output_bus(int bus_idx);
+    int output_bus() const;
+
     float note_to_frequency(uint8_t note); // Added declaration
     void process_tick(uint32_t engine_current_tick); // Updated declaration
 
@@ -86,6 +89,7 @@ private:
     float m_volume = 1.f;
     bool  m_mute   = false;
     bool  m_solo   = false; // Add this
+    int   m_output_bus = -1; // -1 = Master
     std::string m_name;
 
     disgrace_ns::Instrument* m_instrument = nullptr;

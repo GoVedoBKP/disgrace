@@ -85,7 +85,19 @@ namespace disgrace_ns
             jt["instrument_index"] = engine.get_instrument_index(engine.track(t).instrument());
             jt["volume"] = engine.track(t).volume();
             jt["pan"] = engine.track(t).pan;
+            jt["output_bus"] = engine.track(t).output_bus();
             j["tracks"].push_back(jt);
+        }
+
+        // Save buses
+        j["buses"] = json::array();
+        for (size_t b = 0; b < engine.bus_count(); ++b) {
+            json jb;
+            jb["name"] = engine.bus(b).name();
+            jb["volume"] = engine.bus(b).volume();
+            jb["pan"] = engine.bus(b).pan();
+            jb["output_bus"] = engine.bus(b).output_bus();
+            j["buses"].push_back(jb);
         }
 
         // Save patterns
@@ -179,18 +191,27 @@ namespace disgrace_ns
             }
         }
 
+        // Load buses
+        if (j.contains("buses")) {
+            for (auto& jb : j["buses"]) {
+                engine.add_bus();
+                MixerBus& bus = engine.bus(engine.bus_count() - 1);
+                bus.set_name(jb["name"]);
+                bus.set_volume(jb["volume"]);
+                bus.set_pan(jb["pan"]);
+                bus.set_output_bus(jb["output_bus"]);
+            }
+        }
+
         // Load tracks
         if (j.contains("tracks")) {
-            // engine.new_project() adds 1 track and 1 instrument by default usually,
-            // but we cleared instruments above. tracks might still have 1.
-            // Let's ensure tracks are cleared.
-            // engine.new_project() clears tracks.
             for (auto& jt : j["tracks"]) {
                 engine.add_track();
                 Track& track = engine.track(engine.track_count() - 1);
                 track.set_name(jt["name"]);
                 track.set_volume(jt["volume"]);
                 track.pan = jt["pan"];
+                track.set_output_bus(jt.value("output_bus", -1));
                 int inst_idx = jt["instrument_index"];
                 if (inst_idx >= 0 && inst_idx < (int)engine.instrument_count()) {
                     track.set_instrument(&engine.instrument(inst_idx));

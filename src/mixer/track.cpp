@@ -6,7 +6,7 @@ namespace disgrace_ns
 {
 
 disgrace_ns::Track::Track()
-    : m_meter_l(0.0f), m_meter_r(0.0f), m_current_freq(440.0f), m_name("New Track")
+    : m_meter_l(0.0f), m_meter_r(0.0f), m_current_freq(440.0f), m_name("New Track"), m_output_bus(-1)
 {
 }
 
@@ -18,6 +18,7 @@ disgrace_ns::Track::Track(Track&& other) noexcept
       m_volume(other.m_volume),
       m_mute(other.m_mute),
       m_solo(other.m_solo),
+      m_output_bus(other.m_output_bus),
       m_name(std::move(other.m_name)),
       m_instrument(other.m_instrument),
       m_chain(std::move(other.m_chain)),
@@ -37,6 +38,7 @@ Track& disgrace_ns::Track::operator=(Track&& other) noexcept
         m_volume = other.m_volume;
         m_mute = other.m_mute;
         m_solo = other.m_solo;
+        m_output_bus = other.m_output_bus;
         m_name = std::move(other.m_name);
         m_instrument = other.m_instrument;
         m_chain = std::move(other.m_chain);
@@ -293,6 +295,16 @@ bool disgrace_ns::Track::solo() const
 void disgrace_ns::Track::set_solo(bool s)
 {
     m_solo = s;
+}
+
+void disgrace_ns::Track::set_output_bus(int bus_idx)
+{
+    m_output_bus = bus_idx;
+}
+
+int disgrace_ns::Track::output_bus() const
+{
+    return m_output_bus;
 }
 
 } // namespace disgrace_ns

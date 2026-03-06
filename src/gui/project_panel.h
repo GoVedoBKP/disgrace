@@ -33,6 +33,7 @@ private:
     Fl_Scroll* m_track_scroll;
     Fl_Group*  m_track_container;
     Fl_Button* m_add_track_btn;
+    Fl_Button* m_add_bus_btn;
 
     static void cb_new(Fl_Widget*, void*);
     static void cb_load(Fl_Widget*, void*);
@@ -43,8 +44,14 @@ private:
     static void cb_remove_track(Fl_Widget*, void*);
     static void cb_track_name(Fl_Widget*, void*);
     static void cb_track_inst(Fl_Widget*, void*);
+    static void cb_track_output(Fl_Widget*, void*);
     static void cb_move_track_up(Fl_Widget*, void*);
     static void cb_move_track_down(Fl_Widget*, void*);
+
+    static void cb_add_bus(Fl_Widget*, void*);
+    static void cb_remove_bus(Fl_Widget*, void*);
+    static void cb_bus_name(Fl_Widget*, void*);
+    static void cb_bus_output(Fl_Widget*, void*);
 };
 
 } // namespace disgrace_ns

@@ -9,6 +9,7 @@
 #include "../sequencer/pattern.h"
 #include "../sequencer/note.h"
 #include "../mixer/track.h"
+#include "../mixer/mixer_bus.h"
 #include "../instrument/instrument.h"
 #include "../audio/sample_data.h"
 #include "undo_stack.h"
@@ -163,6 +164,13 @@ public:
     void remove_track(size_t index);
     void move_track(size_t from, size_t to);
 
+    size_t bus_count() const;
+    disgrace_ns::MixerBus& bus(size_t index);
+    const disgrace_ns::MixerBus& bus(size_t index) const;
+    void add_bus();
+    void remove_bus(size_t index);
+    void move_bus(size_t from, size_t to);
+
     uint32_t m_num_ins = 2;
     uint32_t m_num_outs = 2;
     uint32_t m_num_midi_ins = 1;
@@ -194,15 +202,20 @@ private:
     disgrace_ns::Timing m_timing;
 
     ::std::vector<disgrace_ns::Track> m_tracks;
+    ::std::vector<disgrace_ns::MixerBus> m_buses;
 
     static constexpr size_t MAX_BLOCK = 2048;
     static constexpr size_t MAX_TRACKS_INTERNAL = 64;
+    static constexpr size_t MAX_BUSES_INTERNAL = 32;
 
     float m_mix_l[MAX_BLOCK];
     float m_mix_r[MAX_BLOCK];
 
     float m_track_l[MAX_TRACKS_INTERNAL][MAX_BLOCK];
     float m_track_r[MAX_TRACKS_INTERNAL][MAX_BLOCK];
+
+    float m_bus_l[MAX_BUSES_INTERNAL][MAX_BLOCK];
+    float m_bus_r[MAX_BUSES_INTERNAL][MAX_BLOCK];
 
     disgrace_ns::RingBuffer<disgrace_ns::EngineCommand, 128> m_cmd_queue;
 
