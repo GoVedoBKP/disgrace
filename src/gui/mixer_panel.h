@@ -36,6 +36,7 @@ private:
     Engine& m_engine;
     int m_selected_track = -1;
     int m_selected_fx_slot = -1;
+    std::string m_current_preset_name = "";
 
     std::vector<void*> m_callback_data;
 
@@ -45,6 +46,7 @@ private:
 
     Fl_Group* m_track_group;
     Fl_Value_Slider* m_master_gain;
+    Fl_Button* m_master_sel_btn;
     VUMeter* m_master_meter_l;
     VUMeter* m_master_meter_r;
     SpectralView* m_spectral_view;

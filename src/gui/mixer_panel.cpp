@@ -123,10 +123,9 @@ MixerPanel::MixerPanel(int x, int y, int w, int h, Engine& engine)
     m_master_meter_l = new VUMeter(x + w - 45, y + h/2 - 35, 15, 25);
     m_master_meter_r = new VUMeter(x + w - 25, y + h/2 - 35, 15, 25);
 
-    Fl_Button* master_sel = new Fl_Button(x + w - 330, y + h/2 - 35, 75, 25, "SEL");
-    master_sel->callback(cb_track_select, reg_cb(new ::std::pair<MixerPanel*,int>(this, -1)));
-    if (m_selected_track == -1) master_sel->color(FL_YELLOW);
-
+    m_master_sel_btn = new Fl_Button(x + w - 330, y + h/2 - 35, 75, 25, "SEL");
+    // We will set callback in update_mixer_ui
+    
     m_upper_pane->end();
 
     m_lower_pane->begin();
@@ -148,6 +147,10 @@ void MixerPanel::clear_callback_data() {
 
 void MixerPanel::update_mixer_ui() {
     clear_callback_data();
+
+    // Reset Master button state
+    m_master_sel_btn->callback(cb_track_select, reg_cb(new ::std::pair<MixerPanel*,int>(this, -1)));
+    m_master_sel_btn->color(m_selected_track == -1 ? FL_YELLOW : FL_BACKGROUND_COLOR);
 
     m_track_group->clear();
     m_track_group->begin();
@@ -199,7 +202,7 @@ void MixerPanel::update_mixer_ui() {
 
       Fl_Button* sel = new Fl_Button(20 + x_offset, cur_y, 75, std_h, "SEL");
       sel->labelsize(font_sz);
-      if ((int)i == m_selected_track) sel->color(FL_YELLOW);
+      sel->color((int)i == m_selected_track ? FL_YELLOW : FL_BACKGROUND_COLOR);
       sel->callback(cb_track_select, reg_cb(new ::std::pair<MixerPanel*,int>(this, (int)i)));
       cur_y += std_h + 5;
 
@@ -391,8 +394,14 @@ void MixerPanel::update_effect_editor() {
             pre_row->begin();
             Fl_Choice* presets = new Fl_Choice(pre_row->x(), pre_row->y(), 150, std_h, "Preset");
             presets->labelsize(font_sz); presets->align(FL_ALIGN_RIGHT);
-            for (const auto& p : dsp->get_presets()) presets->add(strdup(p.c_str()));
-            presets->value(0); presets->callback(cb_fx_preset_select, reg_cb(new ::std::pair<MixerPanel*,int>(this, m_selected_fx_slot)));
+            auto ps = dsp->get_presets();
+            int sel_idx = 0;
+            for (size_t i = 0; i < ps.size(); ++i) {
+                presets->add(strdup(ps[i].c_str()));
+                if (ps[i] == m_current_preset_name) sel_idx = (int)i;
+            }
+            presets->value(sel_idx); 
+            presets->callback(cb_fx_preset_select, reg_cb(new ::std::pair<MixerPanel*,int>(this, m_selected_fx_slot)));
             Fl_Button* psave = new Fl_Button(pre_row->x() + 220, pre_row->y(), 60, std_h, "Save");
             psave->labelsize(font_sz); psave->callback(cb_fx_preset_save, reg_cb(new ::std::pair<MixerPanel*,int>(this, m_selected_fx_slot)));
             Fl_Button* pload = new Fl_Button(pre_row->x() + 285, pre_row->y(), 60, std_h, "Load");
@@ -661,8 +670,15 @@ void MixerPanel::cb_fx_preset_select(Fl_Widget* w, void* data) {
     if (idx < 0) return;
     
     DSP* dsp = (pair->first->m_selected_track == -1) ? pair->first->m_engine.m_master.get_effect(pair->second) : pair->first->m_engine.track(pair->first->m_selected_track).get_effect(pair->second);
-    if (dsp) dsp->load_preset(choice->text(idx));
-    pair->first->update_effect_editor();
+    if (dsp) {
+        pair->first->m_current_preset_name = choice->text(idx);
+        dsp->load_preset(pair->first->m_current_preset_name);
+        // We don't call update_effect_editor() here fully because it rebuilds the Fl_Choice
+        // and we'd lose the visual selection state unless we store it.
+        // But we DO need to update the SLIDERS. 
+        // Simplest: just store the index and rebuild.
+        pair->first->update_effect_editor();
+    }
 }
 
 void MixerPanel::cb_fx_preset_save(Fl_Widget* w, void* data) {
