@@ -200,6 +200,8 @@ public:
     uint32_t sample_rate() const { return m_sample_rate; }
     int  base_octave() const { return m_base_octave; }
     void set_base_octave(int oct) { m_base_octave = std::max(0, std::min(9, oct)); }
+    uint32_t step_size() const { return m_step_size; }
+    void set_step_size(uint32_t s) { m_step_size = std::max(1u, std::min(64u, s)); }
 
     friend class SongSerializer;
 
@@ -248,6 +250,7 @@ private:
     void handle_effect(const disgrace_ns::TrackEvent& ev);
     uint32_t m_sample_rate = 44100;
     int m_base_octave = 4;
+    uint32_t m_step_size = 1;
 };
 
 } // namespace disgrace_ns

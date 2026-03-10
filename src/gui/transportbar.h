@@ -27,6 +27,7 @@ private:
     static void cb_metronome(Fl_Widget*, void*);
     static void cb_tempo(Fl_Widget*, void*);
     static void cb_lpb(Fl_Widget*, void*);
+    static void cb_step(Fl_Widget*, void*);
 
     Engine& m_engine; // Use unqualified Engine
 
@@ -36,6 +37,7 @@ private:
     Fl_Light_Button* m_metronome;
     Fl_Value_Input* m_tempo;
     Fl_Value_Input* m_lpb;
+    Fl_Value_Input* m_step;
     Fl_Box* m_status;
     VUMeter* m_meter_l;
     VUMeter* m_meter_r;

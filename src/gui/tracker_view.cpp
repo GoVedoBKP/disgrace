@@ -427,11 +427,11 @@ int TrackerView::handle(int event) {
 
             switch (key) {
                 case FL_Up: 
-                    m_cursor_row--;
+                    m_cursor_row -= m_engine.step_size();
                     if (m_cursor_row < 0) m_cursor_row = (int)m_engine.pattern().row_count() - 1;
                     break;
                 case FL_Down: 
-                    m_cursor_row++;
+                    m_cursor_row += m_engine.step_size();
                     if (m_cursor_row >= (int)m_engine.pattern().row_count()) m_cursor_row = 0;
                     break;
                 case FL_Left: 
@@ -473,7 +473,7 @@ int TrackerView::handle(int event) {
                 case FL_Escape: m_sel_active = false; break;
                 case FL_BackSpace:
                     delete_current_field();
-                    m_cursor_row--;
+                    m_cursor_row -= m_engine.step_size();
                     if (m_cursor_row < 0) m_cursor_row = (int)m_engine.pattern().row_count() - 1;
                     break;
                 case FL_Delete:
@@ -501,7 +501,7 @@ void TrackerView::insert_note(uint8_t note) {
         } else {
             m_engine.pattern().event(m_cursor_track, m_cursor_row, m_cursor_col).note = 254;
         }
-        m_cursor_row = std::min((int)m_engine.pattern().row_count()-1, m_cursor_row + 1);
+        m_cursor_row = std::min((int)m_engine.pattern().row_count()-1, m_cursor_row + (int)m_engine.step_size());
         redraw();
     }
 }

@@ -57,6 +57,13 @@ TransportBar::TransportBar(int X, int Y, int W, int H, Engine& engine)
     }, &m_engine);
     x += 80;
 
+    m_step = new Fl_Value_Input(x, Y+5, 40, 25, "Step");
+    m_step->range(1, 64);
+    m_step->step(1);
+    m_step->value(1);
+    m_step->callback(cb_step, this);
+    x += 80;
+
     m_status = new Fl_Box(x, Y+5, 100, 25, "Stopped");
     x += 110;
     m_meter_l = new VUMeter(x, Y+5, 100, 10, nullptr, true);
@@ -75,6 +82,12 @@ void TransportBar::cb_lpb(Fl_Widget* w, void* data)
 {
     auto* self = static_cast<disgrace_ns::TransportBar*>(data);
     self->m_engine.set_lpb((uint32_t)static_cast<Fl_Value_Input*>(w)->value());
+}
+
+void TransportBar::cb_step(Fl_Widget* w, void* data)
+{
+    auto* self = static_cast<disgrace_ns::TransportBar*>(data);
+    self->m_engine.set_step_size((uint32_t)static_cast<Fl_Value_Input*>(w)->value());
 }
 
 void TransportBar::cb_play(Fl_Widget*, void* data)
