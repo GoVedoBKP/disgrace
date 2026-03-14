@@ -52,6 +52,7 @@ disgrace_SOURCES = \
     io/lilypond_exporter.cpp \
     io/project_archive.cpp \
     io/song_serializer.cpp \
+    io/xrns_importer.cpp \
     midi/midi_input.cpp \
     mixer/track.cpp \
     mixer/mixer_bus.cpp \
@@ -71,7 +72,8 @@ disgrace_CXXFLAGS = \
     $(FFTW3_CFLAGS) \
     $(LIBARCHIVE_CFLAGS) \
     $(FLUIDSYNTH_CFLAGS) \
-    $(ALSA_CFLAGS)
+    $(ALSA_CFLAGS) \
+    $(LIBXML2_CFLAGS)
 
 disgrace_LDADD = \
     $(JACK_LIBS) \
@@ -82,4 +84,5 @@ disgrace_LDADD = \
     $(FFTW3_LIBS) \
     $(LIBARCHIVE_LIBS) \
     $(FLUIDSYNTH_LIBS) \
-    $(ALSA_LIBS)
+    $(ALSA_LIBS) \
+    $(LIBXML2_LIBS)

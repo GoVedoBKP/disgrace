@@ -79,6 +79,8 @@ public:
     disgrace_ns::Pattern& pattern(size_t);
 
     size_t pattern_count() const;
+    void clear_patterns() { m_patterns.clear(); }
+    void add_pattern(::std::unique_ptr<disgrace_ns::Pattern> pat) { m_patterns.push_back(std::move(pat)); }
     size_t create_pattern();
     size_t copy_pattern(size_t index);
     void resize_pattern(size_t index, size_t new_rows);
@@ -179,6 +181,7 @@ public:
     void process_block(float* l, float* r, size_t nframes, const float* const* in_bufs = nullptr);
     void save_project(const ::std::string& path);
     void load_project(const ::std::string& path);
+    void import_audio(const ::std::string& path);
     void handle_midi(uint8_t* data, size_t size);
 
     void toggle_play();

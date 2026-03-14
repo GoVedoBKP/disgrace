@@ -38,6 +38,7 @@ private:
 
     Fl_Button* m_new_btn;
     Fl_Button* m_load_btn;
+    Fl_Button* m_import_btn;
     Fl_Button* m_save_btn;
     Fl_Button* m_export_btn;
     Fl_Button* m_export_ly_btn;
@@ -55,6 +56,7 @@ private:
 
     static void cb_new(Fl_Widget*, void*);
     static void cb_load(Fl_Widget*, void*);
+    static void cb_import(Fl_Widget*, void*);
     static void cb_save(Fl_Widget*, void*);
     static void cb_export(Fl_Widget*, void*);
     static void cb_export_ly(Fl_Widget*, void*);

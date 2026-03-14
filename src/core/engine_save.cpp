@@ -1,6 +1,7 @@
 #include "engine.h"
 #include "../io/song_serializer.h"
 #include "../io/project_archive.h"
+#include "../io/xrns_importer.h"
 #include <filesystem>
 #include <iostream>
 
@@ -53,6 +54,22 @@ void Engine::load_project(const ::std::string& path)
     } catch (const std::exception& e) {
         std::cerr << "Exception during load: " << e.what() << std::endl;
     }
+}
+
+void Engine::import_audio(const ::std::string& path)
+{
+    std::string path_str(path);
+    
+    if (path_str.size() >= 5 && path_str.compare(path_str.size() - 5, 5, ".xrns") == 0) {
+        if (XrnsImporter::import(*this, path)) {
+            std::cout << "XRNS import successful" << std::endl;
+        } else {
+            std::cerr << "Failed to import XRNS file" << std::endl;
+        }
+        return;
+    }
+    
+    std::cout << "Import audio: " << path << std::endl;
 }
 
 } // namespace disgrace_ns

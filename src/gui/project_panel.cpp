@@ -29,7 +29,7 @@ ProjectPanel::ProjectPanel(int x, int y, int w, int h, Engine& engine)
 
     // Buttons at top left
     int cur_y = y + margin;
-    int btn_w = (left_w - 4 * margin) / 3;
+    int btn_w = (left_w - 5 * margin) / 4;
 
     m_new_btn = new Fl_Button(x + margin, cur_y, btn_w, 25, "New");
     m_new_btn->callback(cb_new, this);
@@ -37,7 +37,10 @@ ProjectPanel::ProjectPanel(int x, int y, int w, int h, Engine& engine)
     m_load_btn = new Fl_Button(x + 2 * margin + btn_w, cur_y, btn_w, 25, "Load");
     m_load_btn->callback(cb_load, this);
 
-    m_save_btn = new Fl_Button(x + 3 * margin + 2 * btn_w, cur_y, btn_w, 25, "Save");
+    m_import_btn = new Fl_Button(x + 3 * margin + 2 * btn_w, cur_y, btn_w, 25, "Import");
+    m_import_btn->callback(cb_import, this);
+
+    m_save_btn = new Fl_Button(x + 4 * margin + 3 * btn_w, cur_y, btn_w, 25, "Save");
     m_save_btn->callback(cb_save, this);
 
     cur_y += 25 + margin;
@@ -126,6 +129,21 @@ void ProjectPanel::cb_load(Fl_Widget*, void* data) {
         for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
             MainWindow* mw = dynamic_cast<MainWindow*>(win);
             if (mw) mw->update_all_uis(); // Immediate, synchronous update
+        }
+    }
+}
+
+void ProjectPanel::cb_import(Fl_Widget*, void* data) {
+    auto* self = static_cast<ProjectPanel*>(data);
+    Fl_Native_File_Chooser fnfc;
+    fnfc.title("Import Audio");
+    fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
+    fnfc.filter("Audio Files\t*.{wav,flac,ogg,mp3,aiff,sf2,xrns}\n");
+    if (fnfc.show() == 0) {
+        self->m_engine.import_audio(fnfc.filename());
+        for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
+            MainWindow* mw = dynamic_cast<MainWindow*>(win);
+            if (mw) mw->update_all_uis();
         }
     }
 }

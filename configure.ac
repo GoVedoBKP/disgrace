@@ -66,6 +66,9 @@ PKG_CHECK_MODULES([ALSA], [alsa])
 # FluidSynth
 PKG_CHECK_MODULES([FLUIDSYNTH], [fluidsynth])
 
+# LibXML2
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0])
+
 # Optional: libsndtouch
 AC_ARG_ENABLE([sndtouch],
     AS_HELP_STRING([--enable-sndtouch], [Enable time-stretch support]),
