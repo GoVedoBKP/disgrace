@@ -30,6 +30,7 @@ private:
     Fl_Button* m_load_btn;
     Fl_Button* m_save_btn;
     Fl_Button* m_export_btn;
+    Fl_Button* m_export_ly_btn;
     Fl_File_Browser* m_file_browser;
 
     Fl_Choice* m_sample_rate_ch;
@@ -46,6 +47,7 @@ private:
     static void cb_load(Fl_Widget*, void*);
     static void cb_save(Fl_Widget*, void*);
     static void cb_export(Fl_Widget*, void*);
+    static void cb_export_ly(Fl_Widget*, void*);
     static void cb_file_select(Fl_Widget*, void*);
     static void cb_add_track(Fl_Widget*, void*);
     static void cb_remove_track(Fl_Widget*, void*);

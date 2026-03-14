@@ -10,7 +10,7 @@ namespace disgrace_ns {
 
 class Engine;
 
-class NotationView : public Fl_Widget {
+class NotationView : public Fl_Group {
 public:
     NotationView(int x, int y, int w, int h, Engine& engine);
     void draw() override;
@@ -24,6 +24,7 @@ public:
     void update_view();
 
 private:
+    static void cb_preview_track(Fl_Widget*, void*);
     Engine& m_engine;
     double m_zoom = 20.0; // pixels per row
     

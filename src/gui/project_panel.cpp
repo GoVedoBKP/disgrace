@@ -1,6 +1,7 @@
 #include "project_panel.h"
 #include "main_window.h"
 #include "../core/engine.h"
+#include "../io/lilypond_exporter.h"
 #include <FL/Fl_Native_File_Chooser.H>
 #include <FL/filename.H>
 #include <FL/fl_ask.H>
@@ -65,8 +66,11 @@ ProjectPanel::ProjectPanel(int x, int y, int w, int h, Engine& engine)
     m_export_progress_bar->value(0.0f);
     m_export_progress_bar->hide();
 
-    m_export_btn = new Fl_Button(x + margin, y + h - 35, left_w - 2 * margin, 25, "Export to WAV");
+    m_export_btn = new Fl_Button(x + margin, y + h - 65, left_w - 2 * margin, 25, "Export to WAV");
     m_export_btn->callback(cb_export, this);
+
+    m_export_ly_btn = new Fl_Button(x + margin, y + h - 35, left_w - 2 * margin, 25, "Export to LilyPond");
+    m_export_ly_btn->callback(cb_export_ly, this);
 
     // Right side: Tracks
     int rcur_y = margin;
@@ -400,6 +404,22 @@ void ProjectPanel::cb_move_track_down(Fl_Widget*, void* data) {
         for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
             MainWindow* mw = dynamic_cast<MainWindow*>(win);
             if (mw) mw->request_update();
+        }
+    }
+}
+
+void ProjectPanel::cb_export_ly(Fl_Widget*, void* data) {
+    auto* self = static_cast<ProjectPanel*>(data);
+    Fl_Native_File_Chooser fnfc;
+    fnfc.title("Export to LilyPond");
+    fnfc.type(Fl_Native_File_Chooser::BROWSE_SAVE_FILE);
+    fnfc.filter("LilyPond Files\t*.ly\n");
+    fnfc.preset_file("score.ly");
+    if (fnfc.show() == 0) {
+        if (LilyPondExporter::export_project(self->m_engine, fnfc.filename())) {
+            fl_message("Successfully exported to %s", fnfc.filename());
+        } else {
+            fl_alert("Failed to export to %s", fnfc.filename());
         }
     }
 }
