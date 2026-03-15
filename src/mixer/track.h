@@ -66,7 +66,7 @@ public:
     float pan    = 0.0f;  // -1 left, +1 right
     uint8_t last_volume = 127;
 
-    void note_on(uint8_t note, uint8_t velocity, size_t column_index = 0, size_t offset_samples = 0);
+    void note_on(uint8_t note, uint8_t velocity, size_t column_index = 0, size_t offset_samples = 0, uint8_t sample_index = 0);
     void note_off(size_t column_index = 0);
     void panic();
 

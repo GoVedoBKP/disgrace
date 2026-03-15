@@ -360,6 +360,20 @@ void InstrumentPanel::update_editor() {
         if (m_plugin_browser->size() == 0) {
             cb_plugin_scan(nullptr, this);
         }
+        
+        // Highlight current plugin
+        m_plugin_browser->deselect();
+        std::string current_path;
+        if (auto* dssi = dynamic_cast<DSSIInstrument*>(&inst)) {
+            current_path = dssi->path();
+            for (auto const& [idx, info] : m_plugin_map) {
+                if (info.path == current_path && info.index == dssi->index()) {
+                    m_plugin_browser->select(idx);
+                    break;
+                }
+            }
+        }
+
         bool is_zyn = (inst.plugin_name().find("ZynAddSubFX") != std::string::npos);
         if (is_zyn) {
             m_zyn_editor->show();
@@ -425,6 +439,7 @@ void InstrumentPanel::cb_inst_select(Fl_Widget*, void* data) {
     auto* pair = static_cast<std::pair<InstrumentPanel*, size_t>*>(data);
     pair->first->m_selected_instrument = (int)pair->second;
     pair->first->m_selected_sample = -1;
+    pair->first->update_editor();
     for (Fl_Window* win = Fl::first_window(); win; win = Fl::next_window(win)) {
         MainWindow* mw = dynamic_cast<MainWindow*>(win);
         if (mw) mw->request_update();

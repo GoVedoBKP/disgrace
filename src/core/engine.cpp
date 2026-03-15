@@ -111,14 +111,20 @@ void Engine::shutdown() {
 void Engine::new_project() {
     m_tracks.clear();
     m_buses.clear();
-    
     m_instruments.clear();
+    m_patterns.clear();
+    m_order.clear();
+    
+    // Add one default instrument
     add_instrument();
     
-    m_patterns.clear();
-    m_patterns.push_back(std::make_unique<Pattern>(64, 0));
+    // Add one default track
+    add_track();
     
-    m_order.clear();
+    // Add one default pattern
+    create_pattern();
+    
+    // Initialize order
     m_order.push_back(0);
     m_order_start.store(0);
     m_order_end.store(0);
@@ -126,6 +132,8 @@ void Engine::new_project() {
     m_active_pattern.store(0);
     m_current_row = 0;
     m_current_tick = 0;
+    m_edit_order_pos.store(0);
+    m_order_pos.store(0);
 }
 
 void Engine::reinitialize_audio(uint32_t num_ins, uint32_t num_outs, uint32_t num_midi_ins, uint32_t num_midi_outs) {
@@ -136,6 +144,7 @@ void Engine::reinitialize_audio(uint32_t num_ins, uint32_t num_outs, uint32_t nu
 }
 
 bool Engine::audio_active() const { return m_initialized; }
+bool Engine::is_playing() const { return m_playing.load(); }
 
 void Engine::start() { transport().play(); }
 void Engine::stop() { 
@@ -250,7 +259,7 @@ void Engine::process_tick()
                 if (ev.note == 254) {
                     m_tracks[t].note_off(c);
                 } else if (ev.note != 255) {
-                    m_tracks[t].note_on(ev.note, ev.volume == 255 ? 100 : ev.volume, c); 
+                    m_tracks[t].note_on(ev.note, ev.volume == 255 ? 100 : ev.volume, c, 0, ev.sample_idx); 
                 }
                 if (c == 0) handle_effect_row_start(t, ev);
             }
@@ -531,6 +540,7 @@ Track& Engine::track(size_t index) { return m_tracks[index]; }
 const Track& Engine::track(size_t index) const { return m_tracks[index]; }
 
 void Engine::add_instrument() { m_instruments.push_back(std::make_unique<NoneInstrument>()); }
+void Engine::add_instrument(::std::unique_ptr<disgrace_ns::Instrument> inst) { m_instruments.push_back(std::move(inst)); }
 void Engine::remove_instrument(size_t index) { if (index < m_instruments.size()) m_instruments.erase(m_instruments.begin() + index); }
 Instrument& Engine::instrument(size_t index) { return *m_instruments[index]; }
 const Instrument& Engine::instrument(size_t index) const { return *m_instruments[index]; }

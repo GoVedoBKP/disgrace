@@ -9,6 +9,7 @@
 #include "project_panel.h"
 #include "settings_panel.h"
 #include "../core/engine.h"
+#include "tracker_view.h"
 
 #include <FL/fl_draw.H>
 #include <FL/Fl_Native_File_Chooser.H> 
@@ -130,74 +131,83 @@ void disgrace_ns::MainWindow::timer_cb(void* data)
     if (self->m_notation_panel && (self->m_engine.transport_state() != TransportState::Stopped || self->m_tabs->value() == self->m_notation_tab))
         self->m_notation_panel->update();
     
-    // Periodically update other UIs if needed
-    // self->update_all_uis(); // Too frequent? 30ms might be okay.
-    
     Fl::repeat_timeout(0.03, timer_cb, data);
   }
 
   int disgrace_ns::MainWindow::handle(int event){
-    if (event == FL_KEYDOWN)
+    if (event == FL_KEYDOWN || event == FL_KEYUP)
     {
       Action action = m_engine.m_key_bindings.get_action(Fl::event_key(), Fl::event_state() & (FL_CTRL | FL_SHIFT | FL_ALT | FL_META));
       
-      switch (action)
-      {
-        case Action::Play:
-          m_engine.play();
-          return 1;
+      auto is_note_action = [](Action a) -> bool {
+          return ((int)a >= (int)Action::NoteC && (int)a <= (int)Action::NoteB) ||
+                 ((int)a >= (int)Action::NoteC2 && (int)a <= (int)Action::NoteB2) ||
+                 (a == Action::NoteC3) || (a == Action::NoteOff);
+      };
 
-        case Action::PlaySong:
-          m_engine.play_song();
-          return 1;
+      if (is_note_action(action) && m_tabs->value() == m_tracker_tab && m_tracker_panel) {
+          if (Fl::focus() == m_tracker_panel->tracker_view()) return m_tracker_panel->tracker_view()->handle(event);
+      }
 
-        case Action::PlayPattern:
-          m_engine.play_pattern();
-          return 1;
-
-        case Action::PlayFromPosition:
-          m_engine.play_from_position(m_engine.current_row());
-          return 1;
-
-        case Action::Stop:
-          m_engine.panic();
-          return 1;
-
-        case Action::Record:
-          m_engine.enable_record(!m_engine.m_record_enabled);
-          if (m_transport) m_transport->update();
-          return 1;
-
-        case Action::ToggleMetronome:
-          m_engine.toggle_metronome();
-          return 1;
-        
-        case Action::Cut:
-          if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
-              m_instrument_panel->cb_cut(nullptr, m_instrument_panel);
+      if (event == FL_KEYDOWN) {
+          switch (action)
+          {
+            case Action::Play:
+              m_engine.play();
               return 1;
-          }
-          break;
 
-        case Action::Copy:
-          if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
-              m_instrument_panel->cb_copy(nullptr, m_instrument_panel);
+            case Action::PlaySong:
+              m_engine.play_song();
               return 1;
-          }
-          break;
 
-        case Action::Paste:
-          if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
-              m_instrument_panel->cb_paste(nullptr, m_instrument_panel);
+            case Action::PlayPattern:
+              m_engine.play_pattern();
               return 1;
-          }
-          break;
 
-        default:
-          break;
+            case Action::PlayFromPosition:
+              m_engine.play_from_position(m_engine.current_row());
+              return 1;
+
+            case Action::Stop:
+              m_engine.panic();
+              return 1;
+
+            case Action::Record:
+              m_engine.enable_record(!m_engine.m_record_enabled);
+              if (m_transport) m_transport->update();
+              return 1;
+
+            case Action::ToggleMetronome:
+              m_engine.toggle_metronome();
+              return 1;
+            
+            case Action::Cut:
+              if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
+                  m_instrument_panel->cb_cut(nullptr, m_instrument_panel);
+                  return 1;
+              }
+              break;
+
+            case Action::Copy:
+              if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
+                  m_instrument_panel->cb_copy(nullptr, m_instrument_panel);
+                  return 1;
+              }
+              break;
+
+            case Action::Paste:
+              if (m_tabs->value() == m_instrument_tab && m_instrument_panel) {
+                  m_instrument_panel->cb_paste(nullptr, m_instrument_panel);
+                  return 1;
+              }
+              break;
+
+            default:
+              break;
+          }
       }
     }
-    return Fl_Double_Window::handle(event); // Call base class handle for unhandled events
+    return Fl_Double_Window::handle(event); 
   }
 
 } // namespace disgrace_ns

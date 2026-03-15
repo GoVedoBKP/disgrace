@@ -135,7 +135,7 @@ void DSSIInstrument::load_program(unsigned long bank, unsigned long program) {
     }
 }
 
-    void DSSIInstrument::note_on(uint8_t note, uint8_t velocity, size_t, size_t)
+    void DSSIInstrument::note_on(uint8_t note, uint8_t velocity, size_t, size_t, uint8_t)
     {
         if (!m_descriptor) return;
         snd_seq_event_t ev;

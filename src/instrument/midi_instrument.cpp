@@ -3,7 +3,7 @@
 
 namespace disgrace_ns {
 
-    void MidiInstrument::note_on(uint8_t note, uint8_t velocity, size_t column_index, size_t)
+    void MidiInstrument::note_on(uint8_t note, uint8_t velocity, size_t column_index, size_t, uint8_t)
  {
     if (!m_engine) return;
     

@@ -528,14 +528,26 @@ void TrackerView::set_current_row(int row) { m_cursor_row = row; clamp_cursor();
 void TrackerView::insert_note(uint8_t note) {
     clamp_cursor();
     if (m_cursor_track < (int)m_engine.track_count()) {
-        if (note != 254) {
-            int final_note = note + m_engine.base_octave() * 12;
-            if (final_note > 119) final_note = 119;
-            m_engine.pattern().event(m_cursor_track, m_cursor_row, m_cursor_col).note = (uint8_t)final_note;
-        } else {
-            m_engine.pattern().event(m_cursor_track, m_cursor_row, m_cursor_col).note = 254;
+        int target_row = m_cursor_row;
+        if (m_engine.is_playing() && m_engine.m_record_enabled.load()) {
+            target_row = (int)m_engine.current_row();
         }
-        m_cursor_row = std::min((int)m_engine.pattern().row_count()-1, m_cursor_row + (int)m_engine.step_size());
+
+        uint8_t final_note = note;
+        if (note != 254) {
+            int octave_note = note + m_engine.base_octave() * 12;
+            if (octave_note > 119) octave_note = 119;
+            final_note = (uint8_t)octave_note;
+        }
+
+        if (m_engine.m_record_enabled.load()) {
+            m_engine.pattern().event(m_cursor_track, (size_t)target_row, m_cursor_col).note = final_note;
+            if (!m_engine.is_playing()) {
+                m_cursor_row = std::min((int)m_engine.pattern().row_count() - 1, m_cursor_row + (int)m_engine.step_size());
+            }
+        }
+        
+        m_engine.preview_note(m_cursor_track, final_note, m_cursor_col);
         redraw();
     }
 }

@@ -73,15 +73,20 @@ namespace disgrace_ns
                 const auto& sf = static_cast<const SoundFontInstrument&>(inst);
                 if (!sf.path().empty()) {
                     fs::path sf_src(sf.path());
-                    std::string sf_filename = "inst_" + std::to_string(i) + "_" + sf_src.filename().string();
+                    std::string sf_filename = sf_src.filename().string();
                     fs::path sf_dest = soundfonts_dir / sf_filename;
                     
                     try {
-                        if (fs::exists(sf_src)) {
+                        if (fs::exists(sf_src) && sf_src != sf_dest) {
                             fs::copy_file(sf_src, sf_dest, fs::copy_options::overwrite_existing);
-                            jinst["soundfont"] = "soundfonts/" + sf_filename;
                         }
-                    } catch (...) {}
+                        jinst["soundfont"] = "soundfonts/" + sf_filename;
+                    } catch (...) {
+                        // Fallback: still save the relative path if it was already in soundfonts/
+                        if (sf.path().find("soundfonts/") != std::string::npos) {
+                             jinst["soundfont"] = sf.path();
+                        }
+                    }
                 }
                 jinst["preset"] = sf.current_preset();
             } else if (inst.type() == InstrumentType::Midi) {
@@ -89,10 +94,10 @@ namespace disgrace_ns
                 jinst["channel"] = midi.channel();
                 jinst["program"] = midi.program();
             } else if (inst.type() == InstrumentType::Plugin) {
-                // Determine if DSSI or LV2 (for now only DSSI has path in save/load)
                 try {
                     const auto& dssi = static_cast<const DSSIInstrument&>(inst);
                     jinst["plugin_path"] = dssi.path();
+                    jinst["plugin_name"] = dssi.plugin_name();
                     jinst["plugin_index"] = dssi.index();
                     jinst["bank"] = dssi.bank();
                     jinst["program"] = dssi.program();
@@ -102,9 +107,7 @@ namespace disgrace_ns
                         jparams.push_back(dssi.get_parameter(p).value);
                     }
                     jinst["parameters"] = jparams;
-                } catch (...) {
-                    // Placeholder for LV2 or others
-                }
+                } catch (...) {}
             }
             j["instruments"].push_back(jinst);
         }
@@ -115,10 +118,11 @@ namespace disgrace_ns
             jt["name"] = engine.track(t).name();
             jt["instrument_index"] = engine.get_instrument_index(engine.track(t).instrument());
             jt["volume"] = engine.track(t).volume();
-            jt["pan"] = engine.track(t).pan;
+            jt["pan"] = engine.track(t).get_pan();
             jt["output_bus"] = engine.track(t).output_bus();
             jt["muted"] = engine.track(t).muted();
             jt["solo"] = engine.track(t).solo();
+            jt["notation"] = (int)engine.track(t).notation();
             
             int in_l, in_r;
             engine.track(t).get_audio_input(in_l, in_r);
@@ -210,21 +214,25 @@ namespace disgrace_ns
                     SoundFontInstrument& sf = static_cast<SoundFontInstrument&>(inst);
                     fs::path sf_path = base_path / ji["soundfont"].get<std::string>();
                     if (sf.load_soundfont(sf_path.string())) {
-                        sf.set_preset(ji["preset"]);
+                        sf.set_preset(ji.value("preset", 0));
                     }
                 } else if (type == InstrumentType::Midi) {
                     MidiInstrument& midi = static_cast<MidiInstrument&>(inst);
                     midi.set_channel(ji.value("channel", 0));
                     midi.set_program(ji.value("program", 0));
-                } else if (type == InstrumentType::Plugin && ji.contains("plugin_path")) {
-                    // For now, assume DSSI if plugin_path is present
+                } else if (type == InstrumentType::Plugin && (ji.contains("plugin_path") || ji.contains("plugin_name"))) {
                     DSSIInstrument& dssi = static_cast<DSSIInstrument&>(inst);
-                    if (dssi.load_plugin(ji["plugin_path"], ji.value("plugin_index", 0))) {
-                        dssi.load_program(ji.value("bank", 0), ji.value("program", 0));
-                        if (ji.contains("parameters")) {
-                            auto& jparams = ji["parameters"];
-                            for (size_t p = 0; p < jparams.size() && p < dssi.parameter_count(); ++p) {
-                                dssi.set_parameter(p, jparams[p]);
+                    std::string path = ji.value("plugin_path", "");
+                    if (path.empty()) path = ji.value("plugin_name", ""); // Fallback
+                    
+                    if (!path.empty()) {
+                        if (dssi.load_plugin(path, ji.value("plugin_index", 0))) {
+                            dssi.load_program(ji.value("bank", 0), ji.value("program", 0));
+                            if (ji.contains("parameters")) {
+                                auto& jparams = ji["parameters"];
+                                for (size_t p = 0; p < jparams.size() && p < dssi.parameter_count(); ++p) {
+                                    dssi.set_parameter(p, jparams[p]);
+                                }
                             }
                         }
                     }
@@ -255,10 +263,11 @@ namespace disgrace_ns
                 Track& track = engine.track(engine.track_count() - 1);
                 track.set_name(jt["name"]);
                 track.set_volume(jt["volume"]);
-                track.pan = jt["pan"];
+                track.set_pan(jt["pan"]);
                 track.set_output_bus(jt.value("output_bus", -1));
                 track.set_mute(jt.value("muted", false));
                 track.set_solo(jt.value("solo", false));
+                track.set_notation((NotationType)jt.value("notation", 0));
                 track.set_audio_input(jt.value("audio_input_l", -1), jt.value("audio_input_r", -1));
                 track.set_input_delay(jt.value("input_delay_ms", 0.0f), engine.sample_rate());
 

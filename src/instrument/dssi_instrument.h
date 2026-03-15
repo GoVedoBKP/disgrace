@@ -14,7 +14,7 @@ public:
     DSSIInstrument(double sample_rate);
     ~DSSIInstrument();
 
-    void note_on(uint8_t note, uint8_t velocity, size_t column_index = 0, size_t offset_samples = 0) override;
+    void note_on(uint8_t note, uint8_t velocity, size_t column_index = 0, size_t offset_samples = 0, uint8_t sample_index = 0) override;
     void note_off(size_t column_index = 0) override;
     void panic() override;
     void set_volume(float vol) override;

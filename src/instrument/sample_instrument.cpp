@@ -10,10 +10,12 @@ namespace disgrace_ns
     {
     }
 
-    void disgrace_ns::SampleInstrument::note_on(uint8_t note, uint8_t velocity, size_t column_index, size_t offset_samples)
+    void disgrace_ns::SampleInstrument::note_on(uint8_t note, uint8_t velocity, size_t column_index, size_t offset_samples, uint8_t sample_index)
     {
-        if (m_samples.empty() || m_selected_sample_index >= m_samples.size()) return;
-        auto& sample = m_samples[m_selected_sample_index];
+        if (m_samples.empty()) return;
+        uint8_t s_idx = (sample_index > 0 && sample_index <= m_samples.size()) ? (sample_index - 1) : m_selected_sample_index;
+        if (s_idx >= m_samples.size()) return;
+        auto& sample = m_samples[s_idx];
         if (!sample.data) return;
 
         // Cut previous note on SAME column

@@ -19,6 +19,7 @@ public:
     void update_pattern_list_browser();
     void update();
     void grab_focus();
+    TrackerView* tracker_view() const { return m_tracker; }
     void resize(int x, int y, int w, int h) override;
 
 private:

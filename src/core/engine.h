@@ -119,6 +119,7 @@ public:
     size_t instrument_count() const;
     int get_instrument_index(const disgrace_ns::Instrument* inst) const;
     void add_instrument();
+    void add_instrument(::std::unique_ptr<disgrace_ns::Instrument> inst);
     void remove_instrument(size_t index);
     void set_instrument_type(size_t index, InstrumentType type);
     ::std::vector<size_t> m_order;
@@ -239,6 +240,7 @@ public:
     double get_current_time_seconds() const;
 
     friend class SongSerializer;
+    friend class XrnsImporter;
 
 private:
     disgrace_ns::UndoStack m_undo;

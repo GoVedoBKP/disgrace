@@ -17,7 +17,7 @@ namespace disgrace_ns
         delete_fluid_settings(m_fluid_settings);
     }
 
-    void SoundFontInstrument::note_on(uint8_t note, uint8_t velocity, size_t column_index, size_t)
+    void SoundFontInstrument::note_on(uint8_t note, uint8_t velocity, size_t column_index, size_t, uint8_t)
     {
         // Simple tracker behavior: one note at a time per column
         // We could track last note per column to send noteoff
