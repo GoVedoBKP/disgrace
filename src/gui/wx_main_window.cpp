@@ -1,0 +1,187 @@
+#include "wx_main_window.h"
+#include "wx_transportbar.h"
+#include "wx_tracker_panel.h"
+#include "wx_tracks_panel.h"
+#include "wx_notation_panel.h"
+#include "wx_mixer_panel.h"
+#include "wx_instrument_panel.h"
+#include "wx_settings_panel.h"
+#include "wx_project_panel.h"
+#include "../core/engine.h"
+
+namespace disgrace_ns {
+
+BEGIN_EVENT_TABLE(WxMainWindow, wxFrame)
+    EVT_TIMER(wxID_ANY, WxMainWindow::OnTimer)
+    EVT_CLOSE(WxMainWindow::OnClose)
+    EVT_CHAR_HOOK(WxMainWindow::OnCharHook)
+    EVT_KEY_DOWN(WxMainWindow::OnKeyDown)
+END_EVENT_TABLE()
+
+WxMainWindow::WxMainWindow(int w, int h, const wxString& title, Engine& engine)
+    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(w, h)),
+      m_engine(engine),
+      m_timer(nullptr),
+      m_tabs(nullptr),
+      m_transport(nullptr),
+      m_project_panel(nullptr),
+      m_tracker_panel(nullptr),
+      m_tracks_panel(nullptr),
+      m_notation_panel(nullptr),
+      m_instrument_panel(nullptr),
+      m_mixer_panel(nullptr),
+      m_settings_panel(nullptr),
+      m_selected_tab(0)
+{
+    SetBackgroundStyle(wxBG_STYLE_SYSTEM);
+
+    wxBoxSizer* main_sizer = new wxBoxSizer(wxVERTICAL);
+
+    m_transport = new TransportBar(this, wxID_ANY, m_engine);
+    main_sizer->Add(m_transport, 0, wxEXPAND | wxALL, 0);
+
+    m_tabs = new wxNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNB_TOP);
+    main_sizer->Add(m_tabs, 1, wxEXPAND | wxALL, 0);
+
+    init_panels();
+
+    SetSizer(main_sizer);
+
+    m_timer = new wxTimer(this, wxID_ANY);
+    m_timer->Start(30);
+
+    Centre();
+}
+
+WxMainWindow::~WxMainWindow() {
+    if (m_timer) {
+        m_timer->Stop();
+        delete m_timer;
+    }
+}
+
+void WxMainWindow::init_panels() {
+    m_project_panel = new ProjectPanel(m_tabs, this, m_engine);
+    m_tabs->AddPage(m_project_panel, "Project");
+
+    m_tracker_panel = new TrackerPanel(m_tabs, m_engine);
+    m_tabs->AddPage(m_tracker_panel, "Tracker");
+
+    m_tracks_panel = new TracksPanel(m_tabs, m_engine);
+    m_tabs->AddPage(m_tracks_panel, "Tracks");
+
+    m_notation_panel = new NotationPanel(m_tabs, m_engine);
+    m_tabs->AddPage(m_notation_panel, "Notation");
+
+    m_instrument_panel = new InstrumentPanel(m_tabs, m_engine);
+    m_tabs->AddPage(m_instrument_panel, "Instrument");
+
+    m_mixer_panel = new MixerPanel(m_tabs, m_engine);
+    m_tabs->AddPage(m_mixer_panel, "Mixer");
+
+    m_settings_panel = new SettingsPanel(m_tabs, m_engine);
+    m_tabs->AddPage(m_settings_panel, "Settings");
+
+    m_tabs->Bind(wxEVT_NOTEBOOK_PAGE_CHANGED, [this](wxBookCtrlEvent& event) {
+        m_selected_tab = event.GetSelection();
+        update_all_uis();
+        if (m_selected_tab == 1 && m_tracker_panel) {
+            m_tracker_panel->grab_focus();
+        }
+    }, wxID_ANY);
+}
+
+void WxMainWindow::update_all_uis() {
+    if (m_mixer_panel) m_mixer_panel->update_mixer_ui();
+    if (m_tracker_panel) m_tracker_panel->update_pattern_list();
+    if (m_project_panel) m_project_panel->update_track_list();
+    if (m_instrument_panel) {
+        m_instrument_panel->update_instrument_list();
+        m_instrument_panel->update_editor();
+    }
+}
+
+void WxMainWindow::request_update() {
+    wxQueueEvent(this, new wxCommandEvent(wxEVT_COMMAND_BUTTON_CLICKED));
+}
+
+Track& WxMainWindow::track(size_t index) {
+    return m_engine.track(index);
+}
+
+int WxMainWindow::get_cursor_row() const {
+    if (m_tracker_panel) return m_tracker_panel->get_cursor_row();
+    return 0;
+}
+
+void WxMainWindow::OnTimer(wxTimerEvent& event) {
+    if (m_transport) m_transport->update();
+    if (m_mixer_panel) m_mixer_panel->update_meters();
+    if (m_tracker_panel && m_engine.transport_state() != TransportState::Stopped) {
+        m_tracker_panel->update();
+    }
+
+    int current_tab = m_tabs->GetSelection();
+    if (m_tracks_panel && (m_engine.transport_state() != TransportState::Stopped || current_tab == 2)) {
+        m_tracks_panel->update();
+    }
+
+    if (m_notation_panel && (m_engine.transport_state() != TransportState::Stopped || current_tab == 3)) {
+        m_notation_panel->update();
+    }
+}
+
+void WxMainWindow::OnClose(wxCloseEvent& event) {
+    m_engine.shutdown();
+    Destroy();
+}
+
+void WxMainWindow::OnCharHook(wxKeyEvent& event) {
+    int key = event.GetKeyCode();
+    int modifiers = event.GetModifiers();
+    Action action = m_engine.m_key_bindings.get_action(key, modifiers);
+
+    auto is_note_action = [](Action a) -> bool {
+        return ((int)a >= (int)Action::NoteC && (int)a <= (int)Action::NoteB) ||
+               ((int)a >= (int)Action::NoteC2 && (int)a <= (int)Action::NoteB2) ||
+               (a == Action::NoteC3) || (a == Action::NoteOff);
+    };
+
+    if (is_note_action(action)) {
+        event.Skip();
+        return;
+    }
+
+    switch (action) {
+        case Action::Play: m_engine.play(); break;
+        case Action::PlaySong: m_engine.play_song(); break;
+        case Action::PlayPattern: m_engine.play_pattern(); break;
+        case Action::PlayFromPosition: m_engine.play_from_position(m_engine.current_row()); break;
+        case Action::Stop: m_engine.stop(); break;
+        case Action::Record:
+            m_engine.enable_record(!m_engine.m_record_enabled);
+            if (m_transport) m_transport->update();
+            break;
+        case Action::OctaveUp:
+            m_engine.set_base_octave(m_engine.base_octave() + 1);
+            if (m_transport) m_transport->update();
+            break;
+        case Action::OctaveDown:
+            m_engine.set_base_octave(m_engine.base_octave() - 1);
+            if (m_transport) m_transport->update();
+            break;
+        case Action::ToggleMetronome: m_engine.toggle_metronome(); break;
+        case Action::Cut: if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->cut(); break;
+        case Action::Copy: if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->copy(); break;
+        case Action::Paste: if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->paste(); break;
+        default:
+            event.Skip();
+            break;
+    }
+}
+
+void WxMainWindow::OnKeyDown(wxKeyEvent& event) {
+    event.Skip();
+}
+
+} // namespace disgrace_ns

@@ -210,24 +210,24 @@ public:
     int m_gui_button_height = 25;
     int m_gui_font_size = 12;
     ThemeType m_gui_theme = ThemeType::Classic;
-    unsigned int m_waveform_color = 0x00FF0000;
-    unsigned int m_bg_color = 0xCCCCCC00; // Standard FLTK gray
-    unsigned int m_fg_color = 0x00000000; // Black
-    unsigned int m_button_color = 0xCCCCCC00;
+    unsigned int m_waveform_color = 0x00FF00FF;
+    unsigned int m_bg_color = 0xCCCCCCFF; // Standard gray
+    unsigned int m_fg_color = 0x000000FF; // Black
+    unsigned int m_button_color = 0xCCCCCCFF;
     int m_boxtype = 2; // FL_UP_BOX
     int m_btn_boxtype = 2; // FL_UP_BOX
     int m_label_boxtype = 0; // FL_NO_BOX
 
     // Tracker colors
-    unsigned int m_tracker_bg = 0x1E1E1E00;
-    unsigned int m_tracker_text = 0xC8C8C800;
-    unsigned int m_tracker_cursor = 0xFFFF0000;
-    unsigned int m_tracker_row_highlight = 0x3C3C5000;
-    unsigned int m_tracker_lpb_highlight = 0x2D2D3700;
-    unsigned int m_tracker_note = 0xB4B4FF00;
-    unsigned int m_tracker_sample = 0xB4FFB400;
-    unsigned int m_tracker_volume = 0xFFB4B400;
-    unsigned int m_tracker_effect = 0xFFFFB400;
+    unsigned int m_tracker_bg = 0x1E1E1EFF;
+    unsigned int m_tracker_text = 0xC8C8C8FF;
+    unsigned int m_tracker_cursor = 0xFFFF00FF;
+    unsigned int m_tracker_row_highlight = 0x3C3C50FF;
+    unsigned int m_tracker_lpb_highlight = 0x2D2D37FF;
+    unsigned int m_tracker_note = 0xB4B4FFFF;
+    unsigned int m_tracker_sample = 0xB4FFB4FF;
+    unsigned int m_tracker_volume = 0xFFB4B4FF;
+    unsigned int m_tracker_effect = 0xFFFFB4FF;
 
     KeyBindings m_key_bindings;
 
@@ -238,6 +238,7 @@ public:
     void set_step_size(uint32_t s) { m_step_size = std::max(1u, std::min(64u, s)); }
 
     double get_current_time_seconds() const;
+    double get_time_at_row(size_t row) const;
 
     friend class SongSerializer;
     friend class XrnsImporter;
@@ -248,7 +249,6 @@ private:
     ::std::unique_ptr<disgrace_ns::AudioBackend> m_backend;
     disgrace_ns::BlockClipboard m_clipboard;
     disgrace_ns::SampleClipboard m_sample_clipboard;
-    ::std::atomic<bool> m_playing{false};
     ::std::atomic<bool> m_loop_pattern{false};
 
     ::std::unique_ptr<disgrace_ns::Transport> m_transport;
@@ -275,6 +275,8 @@ private:
 
     ::std::vector<::std::unique_ptr<disgrace_ns::Pattern>> m_patterns;
     ::std::atomic<size_t>  m_active_pattern{0};
+
+    std::string m_project_temp_dir;
 
     bool write_wav(const ::std::string& path, const ::std::vector<float>& l, const ::std::vector<float>& r, size_t frames, uint32_t sample_rate);
 

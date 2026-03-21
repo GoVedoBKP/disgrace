@@ -40,6 +40,18 @@ public:
     const disgrace_ns::DSPChain& chain() const { return m_chain; }
     disgrace_ns::DSPChain& chain() { return m_chain; }
 
+    // DSP Chain management
+    void set_effect(size_t index, ::std::unique_ptr<disgrace_ns::DSP> dsp);
+    void enable_effect(size_t index, bool en);
+    void move_effect_up(size_t index);
+    void move_effect_down(size_t index);
+    void remove_effect(size_t index);
+    disgrace_ns::DSP* get_effect(size_t index) const;
+    bool is_effect_enabled(size_t index) const;
+
+    void save_effect_chain(const std::string& path);
+    void load_effect_chain(const std::string& path);
+
 private:
     std::string m_name;
     float m_volume = 1.0f;

@@ -2,7 +2,6 @@
 
 #include <string>
 #include <map>
-#include <FL/Fl.H>
 
 namespace disgrace_ns {
 

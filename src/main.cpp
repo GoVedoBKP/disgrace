@@ -1,40 +1,47 @@
-#include <FL/Fl.H>
-#include <FL/Fl_Window.H>
+#include <wx/wxprec.h>
+#include <wx/app.h>
+#include <wx/msgdlg.h>
 
+#include "gui/wx_main_window.h"
 #include "core/engine.h"
-#include "gui/main_window.h"
 
-int main(int argc, char **argv)
-{
-    try
-    {
-        disgrace_ns::Engine engine;
+namespace disgrace_ns {
+class DisgraceApp : public wxApp {
+public:
+    virtual bool OnInit() override;
 
-        if (!engine.initialize())
-            return 1;
+private:
+    Engine* m_engine = nullptr;
+    WxMainWindow* m_window = nullptr;
+};
 
-        disgrace_ns::MainWindow window(1024, 768, "Disgrace", engine);
-        window.show(argc, argv);
+wxIMPLEMENT_APP_CONSOLE(DisgraceApp);
 
-        Fl::add_timeout(0.03,
-                        [](void* userdata)
-                        {
-                            auto* self = static_cast<disgrace_ns::MainWindow*>(userdata);
-                            self->redraw();
-                            Fl::repeat_timeout(0.03,
-                                               disgrace_ns::MainWindow::timer_cb,
-                                               userdata);
-                        },
-                        &window); // Pass the window object itself as userdata
+bool DisgraceApp::OnInit() {
+    if (!wxApp::OnInit())
+        return false;
 
-        int ret = Fl::run();
+    try {
+        m_engine = new Engine();
 
-        engine.shutdown();
-        return ret;
+        if (!m_engine->initialize()) {
+            delete m_engine;
+            return false;
+        }
+
+        m_window = new WxMainWindow(1024, 768, "Disgrace", *m_engine);
+        m_window->Show(true);
+
+        return true;
     }
-    catch (const ::std::exception &e)
-    {
-        fprintf(stderr, "Fatal error: %s\n", e.what());
-        return 1;
+    catch (const std::exception& e) {
+        wxMessageBox(wxString::Format("Fatal error: %s", e.what()), "Error", wxOK | wxICON_ERROR);
+        return false;
     }
+}
+
+} // namespace disgrace_ns
+
+int main(int argc, char** argv) {
+    return wxEntry(argc, argv);
 }

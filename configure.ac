@@ -37,15 +37,15 @@ PKG_CHECK_MODULES([NLOHMANN_JSON], [nlohmann_json])
 # JACK
 PKG_CHECK_MODULES([JACK], [jack >= 1.9.0])
 
-# FLTK
-AC_CHECK_PROG([FLTK_CONFIG], [fltk-config], [fltk-config])
-if test -n "$FLTK_CONFIG"; then
-    FLTK_CFLAGS=`$FLTK_CONFIG --cxxflags`
-    FLTK_LIBS=`$FLTK_CONFIG --ldflags`
-    AC_SUBST([FLTK_CFLAGS])
-    AC_SUBST([FLTK_LIBS])
+# wxWidgets
+AC_CHECK_PROG([WX_CONFIG], [wx-config], [wx-config])
+if test -n "$WX_CONFIG"; then
+    WXWIDGETS_CFLAGS=`$WX_CONFIG --cxxflags`
+    WXWIDGETS_LIBS=`$WX_CONFIG --libs`
+    AC_SUBST([WXWIDGETS_CFLAGS])
+    AC_SUBST([WXWIDGETS_LIBS])
 else
-    AC_MSG_ERROR([FLTK not found. Please install FLTK or ensure fltk-config is in your PATH.])
+    AC_MSG_ERROR([wxWidgets not found. Please install wxWidgets or ensure wx-config is in your PATH.])
 fi
 
 # libsndfile

@@ -2,6 +2,7 @@
 #include "config_manager.h"
 #include "../audio/audio_backend.h"
 #include "../audio/jack_backend.h"
+#include "../audio/null_backend.h"
 #include "../sequencer/timing.h"
 #include "../sequencer/pattern.h"
 #include "../mixer/track.h"
@@ -63,11 +64,13 @@ bool Engine::initialize() {
     m_tracker_effect = conf.tracker_effect;
 
     new_project();
-    if (m_backend->start()) {
-        m_initialized = true;
-        return true;
+    if (!m_backend->start()) {
+        std::cerr << "Failed to start JACK backend, falling back to null backend." << std::endl;
+        m_backend = std::make_unique<NullBackend>();
+        m_backend->start();
     }
-    return false;
+    m_initialized = true;
+    return true;
 }
 
 void Engine::save_config() {
@@ -106,9 +109,17 @@ void Engine::shutdown() {
     save_config();
     m_backend->stop();
     m_initialized = false;
+    if (!m_project_temp_dir.empty() && fs::exists(m_project_temp_dir)) {
+        try { fs::remove_all(m_project_temp_dir); } catch (...) {}
+    }
 }
 
 void Engine::new_project() {
+    if (!m_project_temp_dir.empty() && fs::exists(m_project_temp_dir)) {
+        try { fs::remove_all(m_project_temp_dir); } catch (...) {}
+    }
+    m_project_temp_dir = "";
+
     m_tracks.clear();
     m_buses.clear();
     m_instruments.clear();
@@ -140,15 +151,30 @@ void Engine::reinitialize_audio(uint32_t num_ins, uint32_t num_outs, uint32_t nu
     m_backend->stop();
     m_num_ins = num_ins; m_num_outs = num_outs;
     m_num_midi_ins = num_midi_ins; m_num_midi_outs = num_midi_outs;
-    m_backend->start();
+    
+    // Recreate JackBackend if it failed before and we want to retry it
+    m_backend = std::make_unique<JackBackend>(this, num_ins, num_outs, num_midi_ins, num_midi_outs);
+    if (!m_backend->start()) {
+        std::cerr << "Failed to restart JACK backend, falling back to null backend." << std::endl;
+        m_backend = std::make_unique<NullBackend>();
+        m_backend->start();
+    }
 }
 
 bool Engine::audio_active() const { return m_initialized; }
-bool Engine::is_playing() const { return m_playing.load(); }
+bool Engine::is_playing() const { return transport().is_playing(); }
 
-void Engine::start() { transport().play(); }
+void Engine::start() { 
+    transport().play();
+    EngineCommand cmd;
+    cmd.type = EngineCommandType::Play;
+    m_cmd_queue.push(cmd);
+}
 void Engine::stop() { 
-    transport().stop(); 
+    transport().stop();
+    EngineCommand cmd;
+    cmd.type = EngineCommandType::Stop;
+    m_cmd_queue.push(cmd);
     panic();
 }
 
@@ -325,32 +351,7 @@ void Engine::process_audio(const float* const* in_bufs, uint32_t num_ins, float*
         }
     }
 
-    EngineCommand cmd;
-    while (m_cmd_queue.pop(cmd)) {
-        switch (cmd.type) {
-            case EngineCommandType::Play: m_playing.store(true); break;
-            case EngineCommandType::Stop: m_playing.store(false); break;
-            case EngineCommandType::SetTempo: m_timing.set_bpm((int)cmd.value); break;
-            case EngineCommandType::PlayPattern:
-                m_current_row = 0;
-                m_current_tick = 0;
-                transport().set_loop(true);
-                auto_seek();
-                m_playing.store(true);
-                break;
-            case EngineCommandType::ResizePattern:
-                if (cmd.index < m_patterns.size()) {
-                    printf("DEBUG: Engine: Resizing pattern %zu to %zu rows\n", cmd.index, (size_t)cmd.value);
-                    m_patterns[cmd.index]->resize_rows((size_t)cmd.value);
-                    if (m_active_pattern.load() == cmd.index) {
-                        if (m_current_row >= m_patterns[cmd.index]->row_count()) {
-                            m_current_row = 0;
-                        }
-                    }
-                }
-                break;
-        }
-    }
+    process_commands();
 
     if (!transport().is_playing()) {
         render_block(out_l, out_r, nframes, in_bufs);
@@ -588,15 +589,15 @@ void Engine::process_commands() {
     EngineCommand cmd;
     while (m_cmd_queue.pop(cmd)) {
         switch (cmd.type) {
-            case EngineCommandType::Play: m_playing.store(true); break;
-            case EngineCommandType::Stop: m_playing.store(false); break;
+            case EngineCommandType::Play: transport().play(); break;
+            case EngineCommandType::Stop: transport().stop(); break;
             case EngineCommandType::SetTempo: m_timing.set_bpm((int)cmd.value); break;
             case EngineCommandType::PlayPattern:
                 m_current_row = 0;
                 m_current_tick = 0;
                 transport().set_loop(true);
                 auto_seek();
-                m_playing.store(true);
+                transport().play();
                 break;
             case EngineCommandType::ResizePattern:
                 if (cmd.index < m_patterns.size()) {
@@ -671,7 +672,7 @@ bool Engine::render_to_wav(const std::string& path, const ExportOptions& opts) {
     m_master.m_export_mute.store(true);
 
     // Save current state
-    bool was_playing = m_playing.load();
+    bool was_playing = transport().is_playing();
     size_t old_order_pos = m_order_pos.load();
     size_t old_row = m_current_row;
     size_t old_tick = m_current_tick;
@@ -707,9 +708,9 @@ bool Engine::render_to_wav(const std::string& path, const ExportOptions& opts) {
     const size_t block_size = 512;
     float bl[block_size], br[block_size];
 
-    m_playing.store(true);
+    transport().play();
 
-    while (rendered < total_frames && m_playing.load()) {
+    while (rendered < total_frames && transport().is_playing()) {
         size_t to_render = std::min(block_size, total_frames - rendered);
         
         if (opts.realtime) {
@@ -864,10 +865,27 @@ double Engine::get_current_time_seconds() const {
     samples += (double)m_current_tick * m_timing.samples_per_tick();
     
     // Add sub-tick progress if playing
-    if (m_playing.load()) {
+    if (transport().is_playing()) {
         samples += (double)m_timing.samples_per_tick() - (double)m_samples_until_next_tick;
     }
     
+    return samples / (double)m_sample_rate;
+}
+
+double Engine::get_time_at_row(size_t row) const {
+    size_t total_rows = 0;
+    
+    // Use edit order pos for calculation when not playing
+    size_t edit_pos = m_edit_order_pos.load();
+    for (size_t i = 0; i < edit_pos && i < m_order.size(); ++i) {
+        size_t pat_idx = m_order[i];
+        if (pat_idx < m_patterns.size()) {
+            total_rows += m_patterns[pat_idx]->row_count();
+        }
+    }
+    total_rows += row;
+    
+    double samples = (double)total_rows * m_timing.samples_per_row();
     return samples / (double)m_sample_rate;
 }
 

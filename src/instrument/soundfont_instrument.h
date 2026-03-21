@@ -23,6 +23,7 @@ namespace disgrace_ns
             void note_off(size_t column_index = 0) override;
             void panic() override;
             void set_volume(float vol) override;
+        float get_volume() const { return m_volume; }
         
         void set_pitch(float freq) override;
         void process(float* l, float* r, size_t nframes) override;

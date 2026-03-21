@@ -16,30 +16,20 @@ disgrace_SOURCES = \
     audio/sample_voice.cpp \
     audio/timestretch.cpp \
     dsp/dsp_chain.cpp \
-    gui/main_window.cpp \
-    gui/project_panel.cpp \
-    gui/tab_project.cpp \
-    gui/tab_tracker.cpp \
-    gui/tab_tracks.cpp \
-    gui/tab_notation.cpp \
-    gui/tab_instrument.cpp \
-    gui/tab_mixer.cpp \
-    gui/tab_settings.cpp \
-    gui/tab_help.cpp \
-    gui/tracker_panel.cpp \
-    gui/tracks_panel.cpp \
-    gui/notation_panel.cpp \
-    gui/instrument_panel.cpp \
-    gui/mixer_panel.cpp \
-    gui/settings_panel.cpp \
-    gui/vu_meter.cpp \
-    gui/detached_window.cpp \
+    gui/wx_main_window.cpp \
+    gui/wx_project_panel.cpp \
+    gui/wx_tracker_panel.cpp \
+    gui/wx_tracker_view.cpp \
+    gui/wx_tracks_panel.cpp \
+    gui/wx_notation_panel.cpp \
+    gui/wx_instrument_panel.cpp \
+    gui/wx_mixer_panel.cpp \
+    gui/wx_settings_panel.cpp \
+    gui/wx_vu_meter.cpp \
+    gui/wx_waveform_view.cpp \
+    gui/wx_spectral_view.cpp \
+    gui/wx_transportbar.cpp \
     gui/model/mixer_model.cpp \
-    gui/tracker_view.cpp \
-    gui/transport_panel.cpp \
-    gui/transportbar.cpp \
-    gui/waveform_view.cpp \
-    gui/spectral_view.cpp \
     gui/theme.cpp \
     instrument/instrument.cpp \
     instrument/instrument_rack.cpp \
@@ -64,7 +54,7 @@ disgrace_SOURCES = \
 
 disgrace_CXXFLAGS = \
     $(JACK_CFLAGS) \
-    $(FLTK_CFLAGS) \
+    $(WXWIDGETS_CFLAGS) \
     $(SNDFILE_CFLAGS) \
     $(SAMPLERATE_CFLAGS) \
     $(SNDTOUCH_CFLAGS) \
@@ -77,7 +67,7 @@ disgrace_CXXFLAGS = \
 
 disgrace_LDADD = \
     $(JACK_LIBS) \
-    $(FLTK_LIBS) \
+    $(WXWIDGETS_LIBS) \
     $(SNDFILE_LIBS) \
     $(SAMPLERATE_LIBS) \
     $(SNDTOUCH_LIBS) \

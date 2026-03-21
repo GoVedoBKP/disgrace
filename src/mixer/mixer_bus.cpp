@@ -70,4 +70,41 @@ float MixerBus::meter_r() const { return m_meter_r.load(); }
 void MixerBus::set_output_bus(int bus_idx) { m_output_bus = bus_idx; }
 int MixerBus::output_bus() const { return m_output_bus; }
 
+void MixerBus::set_effect(size_t index, ::std::unique_ptr<disgrace_ns::DSP> dsp) {
+    m_chain.set(index, std::move(dsp));
+}
+
+void MixerBus::enable_effect(size_t index, bool en) {
+    m_chain.enable(index, en);
+}
+
+void MixerBus::move_effect_up(size_t index) {
+    m_chain.move_up(index);
+}
+
+void MixerBus::move_effect_down(size_t index) {
+    m_chain.move_down(index);
+}
+
+void MixerBus::remove_effect(size_t index) {
+    m_chain.remove(index);
+}
+
+disgrace_ns::DSP* MixerBus::get_effect(size_t index) const {
+    if (index >= disgrace_ns::MAX_INSERTS) return nullptr;
+    return m_chain.effects()[index].get();
+}
+
+bool MixerBus::is_effect_enabled(size_t index) const {
+    return true;
+}
+
+void MixerBus::save_effect_chain(const std::string& path) {
+    m_chain.save_chain(path);
+}
+
+void MixerBus::load_effect_chain(const std::string& path) {
+    m_chain.load_chain(path);
+}
+
 } // namespace disgrace_ns
