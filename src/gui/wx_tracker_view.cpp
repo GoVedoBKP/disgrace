@@ -1,6 +1,7 @@
 #include "wx_tracker_view.h"
 #include "theme.h"
 #include "../core/engine.h"
+#include "../edit/cmd_edit_block.h"
 
 #include <wx/dcclient.h>
 #include <wx/msgdlg.h>
@@ -62,6 +63,47 @@ int TrackerView::get_center_row_y() {
     int center_y = 20 + (h - 20) / 2;
     // Align center_y to row grid
     return ((center_y - 20) / row_h) * row_h + 20;
+}
+
+int TrackerView::get_field_at(int track, int x) {
+    if (track < 0 || track >= (int)m_track_ui.size() || !m_pattern) return 0;
+    int rx = x - m_track_ui[track].x - 2;
+    int char_w = 8;
+    int char_x = rx / char_w;
+    int num_cols = (int)m_pattern->column_count(track);
+    
+    if (char_x < num_cols * 10) {
+        int col = char_x / 10;
+        int field_x = char_x % 10;
+        if (field_x < 4) return col * 3 + 0; // Note
+        if (field_x < 7) return col * 3 + 1; // Sample
+        return col * 3 + 2; // Volume
+    } else {
+        int fx_char_x = char_x - num_cols * 10;
+        int fx_field = fx_char_x / 3;
+        return num_cols * 3 + std::min(3, fx_field); // 3, 4, 5, 6
+    }
+}
+
+int TrackerView::get_field_x(int track, int abs_field, int& width) {
+    if (track < 0 || track >= (int)m_track_ui.size() || !m_pattern) return 0;
+    int num_cols = (int)m_pattern->column_count(track);
+    int char_w = 8;
+    int x = m_track_ui[track].x + 2;
+    if (abs_field < num_cols * 3) {
+        int col = abs_field / 3;
+        int field = abs_field % 3;
+        x += col * 10 * char_w;
+        if (field == 0) { width = 3 * char_w; }
+        else if (field == 1) { x += 4 * char_w; width = 2 * char_w; }
+        else { x += 7 * char_w; width = 2 * char_w; }
+    } else {
+        x += num_cols * 10 * char_w;
+        int fx_field = abs_field - num_cols * 3;
+        x += fx_field * 3 * char_w;
+        width = 2 * char_w;
+    }
+    return x;
 }
 
 void TrackerView::OnPaint(wxPaintEvent& event) {
@@ -161,105 +203,148 @@ void TrackerView::draw(wxDC& dc) {
             if (ry < 20) continue;
             if (ry > client_size.y + 100) break;
 
-            // Selection
-            if (m_sel_active) {
-                int s_t = std::min(m_sel_start_track, m_sel_end_track);
-                int e_t = std::max(m_sel_start_track, m_sel_end_track);
-                int s_r = std::min(m_sel_start_row, m_sel_end_row);
-                int e_r = std::max(m_sel_start_row, m_sel_end_row);
-                if (t >= s_t && t <= e_t && r >= s_r && r <= e_r) {
-                    dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
-                    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
-                    dc.DrawRectangle(tui.x, ry, tui.w, row_h);
-                }
-            }
+            auto is_selected = [&](int field) {
+                if (!m_sel_active) return false;
+                auto start = std::make_pair(m_sel_start.track, m_sel_start.field);
+                auto end = std::make_pair(m_sel_end.track, m_sel_end.field);
+                if (start > end) std::swap(start, end);
+                auto pos = std::make_pair(t, field);
+                int min_r = std::min(m_sel_start.row, m_sel_end.row);
+                int max_r = std::max(m_sel_start.row, m_sel_end.row);
+                return r >= min_r && r <= max_r && pos >= start && pos <= end;
+            };
 
             int col_x = tui.x + 2;
             for (int c = 0; c < num_cols; ++c) {
                 const auto& ev = m_pattern->event(t, r, c);
 
                 // Note
-                if (r == m_cursor_row && t == m_cursor_track && c == m_cursor_col && m_cursor_field == 0) {
+                int f_idx = c * 3 + 0;
+                int f_w = 0;
+                int f_x = get_field_x(t, f_idx, f_w);
+                if (is_selected(f_idx)) {
+                    dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                    dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
+                    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+                } else if (r == m_cursor_row && t == m_cursor_track && c == m_cursor_col && m_cursor_field == 0) {
                     dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
                     dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
-                    dc.DrawRectangle(col_x - 1, ry, 3 * char_w + 4, row_h);
+                    dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
                     dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
                 } else {
                     dc.SetTextForeground(ev.note == 255 ? ThemeManager::toWxColour(m_engine.m_tracker_lpb_highlight) : ThemeManager::toWxColour(m_engine.m_tracker_note));
                 }
-                if (ev.note == 255) dc.DrawText("---", col_x, ry + 2);
-                else if (ev.note == 254) dc.DrawText("OFF", col_x, ry + 2);
-                else dc.DrawText(wxString::Format("%s%d", note_names[ev.note % 12], ev.note / 12), col_x, ry + 2);
-                col_x += 4 * char_w;
+                if (ev.note == 255) dc.DrawText("---", f_x, ry + 2);
+                else if (ev.note == 254) dc.DrawText("OFF", f_x, ry + 2);
+                else dc.DrawText(wxString::Format("%s%d", note_names[ev.note % 12], ev.note / 12), f_x, ry + 2);
 
                 // Sample
-                if (r == m_cursor_row && t == m_cursor_track && c == m_cursor_col && m_cursor_field == 1) {
+                f_idx = c * 3 + 1;
+                f_x = get_field_x(t, f_idx, f_w);
+                if (is_selected(f_idx)) {
+                    dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                    dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
+                    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+                } else if (r == m_cursor_row && t == m_cursor_track && c == m_cursor_col && m_cursor_field == 1) {
                     dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
                     dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
-                    dc.DrawRectangle(col_x - 1, ry, 2 * char_w + 4, row_h);
+                    dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
                     dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
                 } else {
                     wxColour s_col = ThemeManager::toWxColour(m_engine.m_tracker_sample);
                     if (!is_sampler) s_col = wxColour(s_col.Red() / 3, s_col.Green() / 3, s_col.Blue() / 3);
                     dc.SetTextForeground(s_col);
                 }
-                if (ev.sample_idx == 0) dc.DrawText("..", col_x, ry + 2);
-                else dc.DrawText(wxString::Format("%02X", ev.sample_idx), col_x, ry + 2);
-                col_x += 3 * char_w;
+                if (ev.sample_idx == 0) dc.DrawText("..", f_x, ry + 2);
+                else dc.DrawText(wxString::Format("%02X", ev.sample_idx), f_x, ry + 2);
 
                 // Volume
-                if (r == m_cursor_row && t == m_cursor_track && c == m_cursor_col && m_cursor_field == 2) {
+                f_idx = c * 3 + 2;
+                f_x = get_field_x(t, f_idx, f_w);
+                if (is_selected(f_idx)) {
+                    dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                    dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                    dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
+                    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+                } else if (r == m_cursor_row && t == m_cursor_track && c == m_cursor_col && m_cursor_field == 2) {
                     dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
                     dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
-                    dc.DrawRectangle(col_x - 1, ry, 2 * char_w + 4, row_h);
+                    dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
                     dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
                 } else {
                     dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_volume));
                 }
-                if (ev.volume == 255) dc.DrawText("..", col_x, ry + 2);
-                else dc.DrawText(wxString::Format("%02X", ev.volume), col_x, ry + 2);
-                col_x += 3 * char_w;
+                if (ev.volume == 255) dc.DrawText("..", f_x, ry + 2);
+                else dc.DrawText(wxString::Format("%02X", ev.volume), f_x, ry + 2);
             }
 
             const auto& row_ev = m_pattern->event(t, r, 0);
             // FX1
-            if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 3) {
+            int f_idx = num_cols * 3 + 0;
+            int f_w = 0;
+            int f_x = get_field_x(t, f_idx, f_w);
+            if (is_selected(f_idx)) {
+                dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
+                dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+            } else if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 3) {
                 dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
                 dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
-                dc.DrawRectangle(col_x - 1, ry, 2 * char_w + 4, row_h);
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
                 dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
             } else dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_effect));
-            dc.DrawText(wxString::Format("%02X", row_ev.effect1), col_x, ry + 2);
-            col_x += 3 * char_w;
+            dc.DrawText(wxString::Format("%02X", row_ev.effect1), f_x, ry + 2);
 
             // P1
-            if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 4) {
+            f_idx = num_cols * 3 + 1;
+            f_x = get_field_x(t, f_idx, f_w);
+            if (is_selected(f_idx)) {
+                dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
+                dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+            } else if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 4) {
                 dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
                 dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
-                dc.DrawRectangle(col_x - 1, ry, 2 * char_w + 4, row_h);
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
                 dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
             } else dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_effect));
-            dc.DrawText(wxString::Format("%02X", row_ev.param1), col_x, ry + 2);
-            col_x += 3 * char_w;
+            dc.DrawText(wxString::Format("%02X", row_ev.param1), f_x, ry + 2);
 
             // FX2
-            if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 5) {
+            f_idx = num_cols * 3 + 2;
+            f_x = get_field_x(t, f_idx, f_w);
+            if (is_selected(f_idx)) {
+                dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
+                dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+            } else if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 5) {
                 dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
                 dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
-                dc.DrawRectangle(col_x - 1, ry, 2 * char_w + 4, row_h);
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
                 dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
             } else dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_effect));
-            dc.DrawText(wxString::Format("%02X", row_ev.effect2), col_x, ry + 2);
-            col_x += 3 * char_w;
+            dc.DrawText(wxString::Format("%02X", row_ev.effect2), f_x, ry + 2);
 
             // P2
-            if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 6) {
+            f_idx = num_cols * 3 + 3;
+            f_x = get_field_x(t, f_idx, f_w);
+            if (is_selected(f_idx)) {
+                dc.SetBrush(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.SetPen(wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT)));
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
+                dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
+            } else if (r == m_cursor_row && t == m_cursor_track && m_cursor_field == 6) {
                 dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
                 dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_cursor)));
-                dc.DrawRectangle(col_x - 1, ry, 2 * char_w + 4, row_h);
+                dc.DrawRectangle(f_x - 1, ry, f_w + 2, row_h);
                 dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
             } else dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_effect));
-            dc.DrawText(wxString::Format("%02X", row_ev.param2), col_x, ry + 2);
+            dc.DrawText(wxString::Format("%02X", row_ev.param2), f_x, ry + 2);
         }
         dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_fg_color)));
         dc.DrawLine(tui.x + tui.w + 5, 0, tui.x + tui.w + 5, 20000);
@@ -268,22 +353,36 @@ void TrackerView::draw(wxDC& dc) {
 
 void TrackerView::OnKeyDown(wxKeyEvent& event) {
     int key = event.GetKeyCode();
-    int mods = event.GetModifiers();
-    Action action = m_engine.m_key_bindings.get_action(key, mods);
+    int wx_mods = event.GetModifiers();
+    int modifiers = 0;
+    if (wx_mods & wxMOD_CONTROL) modifiers |= 0x1000;
+    if (wx_mods & wxMOD_ALT)     modifiers |= 0x2000;
+    if (wx_mods & wxMOD_SHIFT)   modifiers |= 0x4000;
+
+    Action action = m_engine.m_key_bindings.get_action(key, modifiers);
+    bool shift = (wx_mods & wxMOD_SHIFT);
 
     if (m_cursor_track >= (int)m_engine.track_count()) return;
     int num_cols = (int)m_pattern->column_count(m_cursor_track);
     int total_fields = num_cols * 3 + 4;
     int abs_field = (m_cursor_field < 3) ? (m_cursor_col * 3 + m_cursor_field) : (num_cols * 3 + m_cursor_field - 3);
 
+    int old_row = m_cursor_row;
+    int old_track = m_cursor_track;
+    int old_field = abs_field;
+
+    bool navigated = false;
+
     switch (key) {
         case WXK_UP:
             m_cursor_row -= m_engine.step_size();
             if (m_cursor_row < 0) m_cursor_row = (int)m_pattern->row_count() - 1;
+            navigated = true;
             break;
         case WXK_DOWN:
             m_cursor_row += m_engine.step_size();
             if (m_cursor_row >= (int)m_pattern->row_count()) m_cursor_row = 0;
+            navigated = true;
             break;
         case WXK_LEFT:
             abs_field--;
@@ -300,6 +399,7 @@ void TrackerView::OnKeyDown(wxKeyEvent& event) {
                 m_cursor_col = 0;
                 m_cursor_field = 3 + (abs_field - (int)m_pattern->column_count(m_cursor_track) * 3);
             }
+            navigated = true;
             break;
         case WXK_RIGHT:
             abs_field++;
@@ -316,11 +416,12 @@ void TrackerView::OnKeyDown(wxKeyEvent& event) {
                 m_cursor_col = 0;
                 m_cursor_field = 3 + (abs_field - (int)m_pattern->column_count(m_cursor_track) * 3);
             }
+            navigated = true;
             break;
-        case WXK_PAGEUP: m_cursor_row = std::max(0, m_cursor_row - 16); break;
-        case WXK_PAGEDOWN: m_cursor_row = std::min((int)m_pattern->row_count() - 1, m_cursor_row + 16); break;
-        case WXK_HOME: m_cursor_row = 0; break;
-        case WXK_END: m_cursor_row = (int)m_pattern->row_count() - 1; break;
+        case WXK_PAGEUP: m_cursor_row = std::max(0, m_cursor_row - 16); navigated = true; break;
+        case WXK_PAGEDOWN: m_cursor_row = std::min((int)m_pattern->row_count() - 1, m_cursor_row + 16); navigated = true; break;
+        case WXK_HOME: m_cursor_row = 0; navigated = true; break;
+        case WXK_END: m_cursor_row = (int)m_pattern->row_count() - 1; navigated = true; break;
         case WXK_DELETE:
         case WXK_BACK:
             if (m_engine.m_record_enabled.load()) {
@@ -336,6 +437,16 @@ void TrackerView::OnKeyDown(wxKeyEvent& event) {
                 event.Skip();
             }
             return;
+    }
+
+    if (navigated) {
+        if (shift) {
+            if (!m_sel_active) { m_sel_active = true; m_sel_start = {old_track, old_row, old_field}; }
+            int cur_f = (m_cursor_field < 3) ? (m_cursor_col * 3 + m_cursor_field) : ((int)m_pattern->column_count(m_cursor_track) * 3 + m_cursor_field - 3);
+            m_sel_end = {m_cursor_track, m_cursor_row, cur_f};
+        } else {
+            m_sel_active = false;
+        }
     }
 
     ensure_cursor_visible();
@@ -366,19 +477,40 @@ void TrackerView::OnMouseDown(wxMouseEvent& event) {
         bool is_playing = m_engine.transport_state() != TransportState::Stopped;
         int center_row = is_playing ? (int)m_engine.current_row() : m_cursor_row;
 
-        m_cursor_row = center_row + (my - center_y) / row_h;
-        m_cursor_row = std::max(0, std::min((int)m_pattern->row_count() - 1, m_cursor_row));
+        int row = center_row + (my - center_y) / row_h;
+        row = std::max(0, std::min((int)m_pattern->row_count() - 1, row));
+        m_cursor_row = row;
 
+        int track = -1;
         for (size_t t = 0; t < m_track_ui.size(); ++t) {
-            if (mx >= m_track_ui[t].x && mx < m_track_ui[t].x + m_track_ui[t].w) { m_cursor_track = (int)t; break; }
+            if (mx >= m_track_ui[t].x && mx < m_track_ui[t].x + m_track_ui[t].w) { track = (int)t; break; }
         }
+        if (track != -1) m_cursor_track = track;
         
+        int field = get_field_at(m_cursor_track, mx);
+        int num_cols = (int)m_pattern->column_count(m_cursor_track);
+        if (field < num_cols * 3) {
+            m_cursor_col = field / 3;
+            m_cursor_field = field % 3;
+        } else {
+            m_cursor_col = 0;
+            m_cursor_field = 3 + (field - num_cols * 3);
+        }
+
         if (event.ShiftDown()) {
-            if (!m_sel_active) { m_sel_active = true; m_sel_start_row = m_cursor_row; m_sel_start_track = m_cursor_track; }
-            m_sel_end_row = m_cursor_row; m_sel_end_track = m_cursor_track;
+            if (!m_sel_active) { 
+                m_sel_active = true; 
+                m_sel_start = {m_cursor_track, m_cursor_row, field};
+            }
+            m_sel_end = {m_cursor_track, m_cursor_row, field};
         } else { m_sel_active = false; }
         
         m_selecting = true;
+        if (!event.ShiftDown()) {
+            m_sel_start = {m_cursor_track, m_cursor_row, field};
+            m_sel_end = {m_cursor_track, m_cursor_row, field};
+        }
+        
         ensure_cursor_visible();
         Refresh();
     }
@@ -401,8 +533,10 @@ void TrackerView::OnMouseDrag(wxMouseEvent& event) {
             if (mx >= m_track_ui[t].x && mx < m_track_ui[t].x + m_track_ui[t].w) { track = (int)t; break; }
         }
 
-        if (!m_sel_active) { m_sel_active = true; m_sel_start_row = m_cursor_row; m_sel_start_track = m_cursor_track; }
-        m_sel_end_row = row; m_sel_end_track = track;
+        int field = get_field_at(track, mx);
+
+        if (!m_sel_active) { m_sel_active = true; }
+        m_sel_end = {track, row, field};
         Refresh();
     }
 }
@@ -442,17 +576,18 @@ void TrackerView::ensure_cursor_visible() {
 
 void TrackerView::delete_current_field() {
     if (!m_pattern) return;
-    auto& ev = m_pattern->event(m_cursor_track, m_cursor_row, m_cursor_col);
-    switch (m_cursor_field) {
-        case 0: ev.note = 255; break;
-        case 1: ev.sample_idx = 0; break;
-        case 2: ev.volume = 255; break;
-        case 3: ev.effect1 = 0; break;
-        case 4: ev.param1 = 0; break;
-        case 5: ev.effect2 = 0; break;
-        case 6: ev.param2 = 0; break;
+    int abs_f = (m_cursor_field < 3) ? (m_cursor_col * 3 + m_cursor_field) : ((int)m_pattern->column_count(m_cursor_track) * 3 + m_cursor_field - 3);
+    uint8_t old_v = m_pattern->get_field(m_cursor_track, m_cursor_row, abs_f);
+    uint8_t new_v = 0;
+    if (m_cursor_field == 0) new_v = 255;
+    else if (m_cursor_field == 2) new_v = 255;
+
+    if (old_v != new_v) {
+        std::vector<CmdEditBlock::CellEdit> edits;
+        edits.push_back({(size_t)m_cursor_track, (size_t)m_cursor_row, (size_t)abs_f, old_v, new_v});
+        m_engine.undo_stack().execute(std::make_unique<CmdEditBlock>(*m_pattern, edits));
+        Refresh();
     }
-    Refresh();
 }
 
 void TrackerView::clamp_cursor() {
@@ -479,7 +614,14 @@ void TrackerView::insert_note(uint8_t note) {
     }
 
     if (m_engine.m_record_enabled.load()) {
-        m_pattern->event(m_cursor_track, (size_t)target_row, m_cursor_col).note = final_note;
+        int abs_f = m_cursor_col * 3 + 0;
+        uint8_t old_note = m_pattern->get_field(m_cursor_track, target_row, abs_f);
+        if (old_note != final_note) {
+            std::vector<CmdEditBlock::CellEdit> edits;
+            edits.push_back({(size_t)m_cursor_track, (size_t)target_row, (size_t)abs_f, old_note, final_note});
+            m_engine.undo_stack().execute(std::make_unique<CmdEditBlock>(*m_pattern, edits));
+        }
+
         if (!m_engine.is_playing()) {
             m_cursor_row = std::min((int)m_pattern->row_count() - 1, m_cursor_row + (int)m_engine.step_size());
         }
@@ -491,7 +633,66 @@ void TrackerView::insert_note(uint8_t note) {
 bool TrackerView::handle_action(Action action) {
     int note = -1;
     switch (action) {
+        case Action::Undo: m_engine.undo_stack().undo(); Refresh(); return true;
+        case Action::Redo: m_engine.undo_stack().redo(); Refresh(); return true;
+
+        case Action::Copy: {
+            if (!m_sel_active) return true;
+            auto& clip = m_engine.clipboard();
+            clip.cells.clear();
+            auto start = std::make_pair(m_sel_start.track, m_sel_start.field);
+            auto end = std::make_pair(m_sel_end.track, m_sel_end.field);
+            if (start > end) std::swap(start, end);
+            int min_r = std::min(m_sel_start.row, m_sel_end.row);
+            int max_r = std::max(m_sel_start.row, m_sel_end.row);
+            clip.width_tracks = end.first - start.first + 1;
+            clip.height_rows = max_r - min_r + 1;
+            for (int t = start.first; t <= end.first; ++t) {
+                int total_f = (int)m_pattern->column_count(t) * 3 + 4;
+                for (int r = min_r; r <= max_r; ++r) {
+                    for (int f = 0; f < total_f; ++f) {
+                        auto cur_pos = std::make_pair(t, f);
+                        if (cur_pos >= start && cur_pos <= end) {
+                            uint8_t val = m_pattern->get_field(t, r, f);
+                            clip.cells.push_back({t - start.first, r - min_r, f, val});
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        case Action::Cut: {
+            if (!m_sel_active) return true;
+            handle_action(Action::Copy);
+            handle_action(Action::Clear);
+            return true;
+        }
+        case Action::Paste: {
+            const auto& clip = m_engine.clipboard();
+            if (clip.cells.empty()) return true;
+            std::vector<CmdEditBlock::CellEdit> edits;
+            for (const auto& cell : clip.cells) {
+                int target_t = m_cursor_track + cell.rel_track;
+                int target_r = m_cursor_row + cell.rel_row;
+                int target_f = cell.abs_field;
+                if (target_t < (int)m_engine.track_count() && target_r < (int)m_pattern->row_count()) {
+                    int total_f = (int)m_pattern->column_count(target_t) * 3 + 4;
+                    if (target_f < total_f) {
+                        uint8_t old_v = m_pattern->get_field(target_t, target_r, target_f);
+                        if (old_v != cell.value)
+                            edits.push_back({(size_t)target_t, (size_t)target_r, (size_t)target_f, old_v, cell.value});
+                    }
+                }
+            }
+            if (!edits.empty()) {
+                m_engine.undo_stack().execute(std::make_unique<CmdEditBlock>(*m_pattern, edits));
+                Refresh();
+            }
+            return true;
+        }
+
         case Action::NoteOff: note = 254; break;
+        // ... (Note actions remain same)
         case Action::NoteC: note = 0; break;
         case Action::NoteCs: note = 1; break;
         case Action::NoteD: note = 2; break;
@@ -576,14 +777,45 @@ bool TrackerView::handle_action(Action action) {
 
         case Action::SelectAll:
             m_sel_active = true;
-            m_sel_start_track = 0; m_sel_start_row = 0;
-            m_sel_end_track = (int)m_engine.track_count() - 1;
-            m_sel_end_row = (int)m_pattern->row_count() - 1;
+            m_sel_start = {0, 0, 0};
+            m_sel_end = {(int)m_engine.track_count() - 1, (int)m_pattern->row_count() - 1, (int)m_pattern->column_count(m_engine.track_count() - 1) * 3 + 3};
             Refresh();
             return true;
 
         case Action::Clear:
-            if (m_engine.m_record_enabled.load()) {
+            if (m_sel_active) {
+                std::vector<CmdEditBlock::CellEdit> edits;
+                auto start = std::make_pair(m_sel_start.track, m_sel_start.field);
+                auto end = std::make_pair(m_sel_end.track, m_sel_end.field);
+                if (start > end) std::swap(start, end);
+                int min_r = std::min(m_sel_start.row, m_sel_end.row);
+                int max_r = std::max(m_sel_start.row, m_sel_end.row);
+
+                for (int t = start.first; t <= end.first; ++t) {
+                    int num_cols = (int)m_pattern->column_count(t);
+                    int total_f = num_cols * 3 + 4;
+                    for (int r = min_r; r <= max_r; ++r) {
+                        for (int f = 0; f < total_f; ++f) {
+                            auto cur_pos = std::make_pair(t, f);
+                            if (cur_pos >= start && cur_pos <= end) {
+                                uint8_t old_v = m_pattern->get_field(t, r, f);
+                                uint8_t new_v = 0;
+                                if (f < num_cols * 3) {
+                                    if (f % 3 == 0) new_v = 255; // Note
+                                    else if (f % 3 == 2) new_v = 255; // Vol
+                                }
+                                if (old_v != new_v)
+                                    edits.push_back({(size_t)t, (size_t)r, (size_t)f, old_v, new_v});
+                            }
+                        }
+                    }
+                }
+                if (!edits.empty()) {
+                    m_engine.undo_stack().execute(std::make_unique<CmdEditBlock>(*m_pattern, edits));
+                    Refresh();
+                }
+                return true;
+            } else if (m_engine.m_record_enabled.load()) {
                 delete_current_field();
                 return true;
             }

@@ -139,7 +139,12 @@ void WxMainWindow::OnClose(wxCloseEvent& event) {
 
 void WxMainWindow::OnCharHook(wxKeyEvent& event) {
     int key = event.GetKeyCode();
-    int modifiers = event.GetModifiers();
+    int wx_mods = event.GetModifiers();
+    int modifiers = 0;
+    if (wx_mods & wxMOD_CONTROL) modifiers |= 0x1000;
+    if (wx_mods & wxMOD_ALT)     modifiers |= 0x2000;
+    if (wx_mods & wxMOD_SHIFT)   modifiers |= 0x4000;
+
     Action action = m_engine.m_key_bindings.get_action(key, modifiers);
 
     auto is_note_action = [](Action a) -> bool {
@@ -159,8 +164,14 @@ void WxMainWindow::OnCharHook(wxKeyEvent& event) {
         case Action::PlayPattern: m_engine.play_pattern(); break;
         case Action::PlayFromPosition: m_engine.play_from_position(m_engine.current_row()); break;
         case Action::Stop: m_engine.stop(); break;
-        case Action::Undo: m_engine.undo_stack().undo(); break;
-        case Action::Redo: m_engine.undo_stack().redo(); break;
+        case Action::Undo: 
+            if (m_selected_tab == 1 && m_tracker_panel) m_tracker_panel->get_tracker_view()->handle_action(Action::Undo);
+            else m_engine.undo_stack().undo(); 
+            break;
+        case Action::Redo: 
+            if (m_selected_tab == 1 && m_tracker_panel) m_tracker_panel->get_tracker_view()->handle_action(Action::Redo);
+            else m_engine.undo_stack().redo(); 
+            break;
         case Action::Record:
             m_engine.enable_record(!m_engine.m_record_enabled);
             if (m_transport) m_transport->update();
@@ -204,9 +215,18 @@ void WxMainWindow::OnCharHook(wxKeyEvent& event) {
             break;
         }
         case Action::ToggleMetronome: m_engine.toggle_metronome(); break;
-        case Action::Cut: if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->cut(); break;
-        case Action::Copy: if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->copy(); break;
-        case Action::Paste: if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->paste(); break;
+        case Action::Cut: 
+            if (m_selected_tab == 1 && m_tracker_panel) m_tracker_panel->get_tracker_view()->handle_action(Action::Cut);
+            else if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->cut(); 
+            break;
+        case Action::Copy: 
+            if (m_selected_tab == 1 && m_tracker_panel) m_tracker_panel->get_tracker_view()->handle_action(Action::Copy);
+            else if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->copy(); 
+            break;
+        case Action::Paste: 
+            if (m_selected_tab == 1 && m_tracker_panel) m_tracker_panel->get_tracker_view()->handle_action(Action::Paste);
+            else if (m_selected_tab == 4 && m_instrument_panel) m_instrument_panel->paste(); 
+            break;
         default:
             event.Skip();
             break;

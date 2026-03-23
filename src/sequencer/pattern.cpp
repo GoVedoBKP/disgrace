@@ -74,4 +74,41 @@ void Pattern::delete_row(size_t row) {
     }
 }
 
+uint8_t Pattern::get_field(size_t track, size_t row, size_t abs_field) const {
+    size_t num_cols = column_count(track);
+    if (abs_field < num_cols * 3) {
+        const auto& ev = event(track, row, abs_field / 3);
+        int sub_f = (int)abs_field % 3;
+        if (sub_f == 0) return ev.note;
+        if (sub_f == 1) return ev.sample_idx;
+        return ev.volume;
+    } else {
+        const auto& ev = event(track, row, 0);
+        int fx_f = (int)abs_field - (int)num_cols * 3;
+        if (fx_f == 0) return ev.effect1;
+        if (fx_f == 1) return ev.param1;
+        if (fx_f == 2) return ev.effect2;
+        if (fx_f == 3) return ev.param2;
+    }
+    return 0;
+}
+
+void Pattern::set_field(size_t track, size_t row, size_t abs_field, uint8_t val) {
+    size_t num_cols = column_count(track);
+    if (abs_field < num_cols * 3) {
+        auto& ev = event(track, row, abs_field / 3);
+        int sub_f = (int)abs_field % 3;
+        if (sub_f == 0) ev.note = val;
+        else if (sub_f == 1) ev.sample_idx = val;
+        else if (sub_f == 2) ev.volume = val;
+    } else {
+        auto& ev = event(track, row, 0);
+        int fx_f = (int)abs_field - (int)num_cols * 3;
+        if (fx_f == 0) ev.effect1 = val;
+        else if (fx_f == 1) ev.param1 = val;
+        else if (fx_f == 2) ev.effect2 = val;
+        else if (fx_f == 3) ev.param2 = val;
+    }
+}
+
 } // namespace disgrace_ns

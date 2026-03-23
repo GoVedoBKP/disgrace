@@ -74,6 +74,9 @@ public:
     void insert_row(size_t row);
     void delete_row(size_t row);
 
+    uint8_t get_field(size_t track, size_t row, size_t abs_field) const;
+    void set_field(size_t track, size_t row, size_t abs_field, uint8_t val);
+
 private:
     size_t m_row_count;
     std::vector<TrackData> m_tracks;

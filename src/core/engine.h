@@ -28,9 +28,15 @@ namespace disgrace_ns
 
 struct BlockClipboard
 {
-    size_t width = 0;
-    size_t height = 0;
-    ::std::vector<uint8_t> notes;
+    struct Cell {
+        int rel_track;
+        int rel_row;
+        int abs_field; // Normalized field index within a track row
+        uint8_t value;
+    };
+    std::vector<Cell> cells;
+    int width_tracks = 0;
+    int height_rows = 0;
 };
 
 struct SampleClipboard
