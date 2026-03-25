@@ -46,6 +46,7 @@ void MasterBus::process(float* l,
 {
     m_filter.process(l, r, nframes);
     m_styles.process(l, r, nframes);
+    m_reference_matcher.process(l, r, nframes);
 
     float vol = m_muted.load() ? 0.f : m_gain.load();
     float pan = m_pan.load();

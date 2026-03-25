@@ -16,6 +16,8 @@ disgrace_SOURCES = \
     audio/sample_voice.cpp \
     audio/timestretch.cpp \
     dsp/dsp_chain.cpp \
+    dsp/reference_analyzer.cpp \
+    dsp/reference_matcher.cpp \
     gui/wx_main_window.cpp \
     gui/wx_project_panel.cpp \
     gui/wx_tracker_panel.cpp \

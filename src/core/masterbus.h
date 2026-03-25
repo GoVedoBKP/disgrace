@@ -5,6 +5,7 @@
 #include <memory>
 #include "../dsp/mastering_filter.h"
 #include "../dsp/mastering_styles.h"
+#include "../dsp/reference_matcher.h"
 
 namespace disgrace_ns
 {
@@ -33,6 +34,8 @@ public:
     const disgrace_ns::MasteringFilterDSP& mastering_filter() const { return m_filter; }
     disgrace_ns::MasteringStylesDSP& mastering_styles() { return m_styles; }
     const disgrace_ns::MasteringStylesDSP& mastering_styles() const { return m_styles; }
+    disgrace_ns::ReferenceMatcherDSP& reference_matcher() { return m_reference_matcher; }
+    const disgrace_ns::ReferenceMatcherDSP& reference_matcher() const { return m_reference_matcher; }
 
     ::std::atomic<bool> m_is_recording{false};
     ::std::atomic<bool> m_export_mute{false};
@@ -50,6 +53,7 @@ private:
 
     disgrace_ns::MasteringFilterDSP m_filter;
     disgrace_ns::MasteringStylesDSP m_styles;
+    disgrace_ns::ReferenceMatcherDSP m_reference_matcher;
 };
 
 } // namespace disgrace_ns

@@ -19,11 +19,13 @@
 #include "../dsp/stereo_expander.h"
 #include "../dsp/ring_modulator.h"
 #include "../dsp/gate.h"
+#include "../dsp/reference_matcher.h"
 
 #include <wx/sizer.h>
 #include <wx/statline.h>
 #include <wx/scrolwin.h>
 #include <wx/artprov.h>
+#include <wx/filedlg.h>
 #include <algorithm>
 #include <memory>
 
@@ -73,7 +75,8 @@ MixerPanel::MixerPanel(wxWindow* parent, Engine& engine)
         "Gain", "Delay", "Reverb", "Limiter", "Exciter",
         "Phaser", "Flanger", "Echo", "Compressor",
         "Graphical EQ", "Cabinet", "Distortion",
-        "Chorus", "Stereo Expander", "Ring Modulator", "Gate"
+        "Chorus", "Stereo Expander", "Ring Modulator", "Gate",
+        "Reference Matcher"
     };
     std::sort(fx_list.begin(), fx_list.end());
     for (const auto& fx : fx_list) m_avail_fx_browser->Append(fx);
@@ -467,6 +470,89 @@ void MixerPanel::update_effect_editor() {
         params_sizer->Add(lpf_en, 0, wxALL, 5);
         add_m_slider("LPF Freq", 5000.0f, 20000.0f, filter.lpf_freq, [&filter](float v){ filter.lpf_freq = v; filter.update_filters(); });
 
+        // --- Reference Matcher Section ---
+        params_sizer->Add(new wxStaticLine(m_fx_params_group), 0, wxEXPAND | wxALL, 5);
+        wxStaticText* rm_header = new wxStaticText(m_fx_params_group, wxID_ANY, "Reference Matcher");
+        wxFont rm_font = rm_header->GetFont(); rm_font.SetWeight(wxFONTWEIGHT_BOLD); rm_header->SetFont(rm_font);
+        params_sizer->Add(rm_header, 0, wxALL, 5);
+
+        auto& matcher = m_engine.m_master.reference_matcher();
+
+        // Reference file info
+        wxBoxSizer* ref_row = new wxBoxSizer(wxHORIZONTAL);
+        ref_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "Reference:", wxDefaultPosition, wxSize(100, -1)), 0, wxALL, 5);
+        if (matcher.is_reference_loaded()) {
+            wxString ref_name = matcher.get_reference_path();
+            if (ref_name.Len() > 40) ref_name = "..." + ref_name.Right(40);
+            ref_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, ref_name), 1, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        } else {
+            ref_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "(No reference loaded)"), 1, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+        }
+        wxButton* load_ref_btn = new wxButton(m_fx_params_group, wxID_ANY, "Load");
+        load_ref_btn->Bind(wxEVT_BUTTON, [this, &matcher](wxCommandEvent& ev) {
+            wxFileDialog dlg(this, "Load Reference Track", "", "", "Audio files (*.wav;*.flac;*.ogg;*.mp3)|*.wav;*.flac;*.ogg;*.mp3", wxFD_OPEN);
+            if (dlg.ShowModal() == wxID_OK) {
+                if (matcher.load_reference(dlg.GetPath().ToStdString())) {
+                    update_effect_editor();
+                }
+            }
+        });
+        ref_row->Add(load_ref_btn, 0, wxALL, 2);
+        params_sizer->Add(ref_row, 0, wxEXPAND | wxALL, 2);
+
+        // Presets
+        wxBoxSizer* rm_preset_row = new wxBoxSizer(wxHORIZONTAL);
+        rm_preset_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "Preset:", wxDefaultPosition, wxSize(100, -1)), 0, wxALL, 5);
+        wxChoice* rm_preset_choice = new wxChoice(m_fx_params_group, wxID_ANY);
+        for (const auto& p : matcher.get_presets()) rm_preset_choice->Append(p);
+        rm_preset_choice->SetStringSelection(matcher.current_preset());
+        rm_preset_choice->Bind(wxEVT_CHOICE, [this, &matcher](wxCommandEvent& ev) {
+            if (m_is_updating_ui) return;
+            matcher.load_preset(ev.GetString().ToStdString());
+            update_effect_editor();
+        });
+        rm_preset_row->Add(rm_preset_choice, 1, wxEXPAND | wxALL, 5);
+        params_sizer->Add(rm_preset_row, 0, wxEXPAND | wxALL, 2);
+
+        // Match controls
+        wxBoxSizer* match_row = new wxBoxSizer(wxHORIZONTAL);
+        wxCheckBox* match_rms = new wxCheckBox(m_fx_params_group, wxID_ANY, "Match RMS");
+        match_rms->SetValue(matcher.get_match_rms());
+        match_rms->Bind(wxEVT_CHECKBOX, [this, &matcher](wxCommandEvent& ev) { matcher.set_match_rms(ev.IsChecked()); });
+        match_row->Add(match_rms, 0, wxALL, 5);
+
+        wxCheckBox* match_eq = new wxCheckBox(m_fx_params_group, wxID_ANY, "Match EQ");
+        match_eq->SetValue(matcher.get_match_eq());
+        match_eq->Bind(wxEVT_CHECKBOX, [this, &matcher](wxCommandEvent& ev) { matcher.set_match_eq(ev.IsChecked()); });
+        match_row->Add(match_eq, 0, wxALL, 5);
+
+        wxCheckBox* match_width = new wxCheckBox(m_fx_params_group, wxID_ANY, "Match Width");
+        match_width->SetValue(matcher.get_match_width());
+        match_width->Bind(wxEVT_CHECKBOX, [this, &matcher](wxCommandEvent& ev) { matcher.set_match_width(ev.IsChecked()); });
+        match_row->Add(match_width, 0, wxALL, 5);
+
+        wxCheckBox* match_dyn = new wxCheckBox(m_fx_params_group, wxID_ANY, "Match Dynamics");
+        match_dyn->SetValue(matcher.get_match_dynamics());
+        match_dyn->Bind(wxEVT_CHECKBOX, [this, &matcher](wxCommandEvent& ev) { matcher.set_match_dynamics(ev.IsChecked()); });
+        match_row->Add(match_dyn, 0, wxALL, 5);
+        params_sizer->Add(match_row, 0, wxEXPAND | wxALL, 2);
+
+        // Mix slider
+        add_m_slider("Mix", 0.0f, 1.0f, matcher.get_mix(), [&matcher](float v){ matcher.set_mix(v); });
+
+        // Target RMS
+        add_m_slider("Target RMS (dB)", -24.0f, -6.0f, matcher.get_target_rms(), [&matcher](float v){ matcher.set_target_rms(v); });
+
+        // Limiter controls
+        wxBoxSizer* limit_row = new wxBoxSizer(wxHORIZONTAL);
+        wxCheckBox* limit_en = new wxCheckBox(m_fx_params_group, wxID_ANY, "Limiter");
+        limit_en->SetValue(matcher.get_limit());
+        limit_en->Bind(wxEVT_CHECKBOX, [this, &matcher](wxCommandEvent& ev) { matcher.set_limit(ev.IsChecked()); });
+        limit_row->Add(limit_en, 0, wxALL, 5);
+
+        add_m_slider("Ceiling", 0.8f, 1.0f, matcher.get_limit_threshold(), [&matcher](float v){ matcher.set_limit_threshold(v); });
+        params_sizer->Add(limit_row, 0, wxEXPAND | wxALL, 2);
+
     } else {
         // --- Regular Track/Bus UI ---
         auto get_fx = [&](size_t idx) -> DSP* {
@@ -658,6 +744,30 @@ void MixerPanel::update_effect_editor() {
                 add_slider("Range", 0.0f, 1.0f, gate->range, [gate](float v){ gate->range = v; });
                 add_slider("Attack", 0.001f, 0.5f, gate->attack, [gate](float v){ gate->attack = v; });
                 add_slider("Release", 0.01f, 2.0f, gate->release, [gate](float v){ gate->release = v; });
+            } else if (auto* rm = dynamic_cast<disgrace_ns::ReferenceMatcherDSP*>(dsp)) {
+                // Reference file info
+                wxBoxSizer* ref_row = new wxBoxSizer(wxHORIZONTAL);
+                ref_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "Reference:", wxDefaultPosition, wxSize(80, -1)), 0, wxALL, 5);
+                if (rm->is_reference_loaded()) {
+                    wxString ref_name = rm->get_reference_path();
+                    if (ref_name.Len() > 30) ref_name = "..." + ref_name.Right(30);
+                    ref_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, ref_name), 1, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+                } else {
+                    ref_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "(None)"), 1, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+                }
+                wxButton* load_ref_btn = new wxButton(m_fx_params_group, wxID_ANY, "Load");
+                load_ref_btn->Bind(wxEVT_BUTTON, [this, rm](wxCommandEvent& ev) {
+                    wxFileDialog dlg(this, "Load Reference Track", "", "", "Audio files (*.wav;*.flac;*.ogg;*.mp3)|*.wav;*.flac;*.ogg;*.mp3", wxFD_OPEN);
+                    if (dlg.ShowModal() == wxID_OK) {
+                        rm->load_reference(dlg.GetPath().ToStdString());
+                        update_effect_editor();
+                    }
+                });
+                ref_row->Add(load_ref_btn, 0, wxALL, 2);
+                params_sizer->Add(ref_row, 0, wxEXPAND | wxALL, 2);
+
+                add_slider("Mix", 0.0f, 1.0f, rm->get_mix(), [rm](float v){ rm->set_mix(v); });
+                add_slider("Target RMS (dB)", -24.0f, -6.0f, rm->get_target_rms(), [rm](float v){ rm->set_target_rms(v); });
             }
         } else {
             params_sizer->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "No effect selected"), 0, wxALL, 5);
@@ -749,6 +859,7 @@ void MixerPanel::on_add_fx(wxCommandEvent& event) {
     else if (fx_name == "Stereo Expander") dsp = std::make_unique<disgrace_ns::StereoExpanderDSP>();
     else if (fx_name == "Ring Modulator") dsp = std::make_unique<disgrace_ns::RingModulatorDSP>();
     else if (fx_name == "Gate") dsp = std::make_unique<disgrace_ns::GateDSP>();
+    else if (fx_name == "Reference Matcher") dsp = std::make_unique<disgrace_ns::ReferenceMatcherDSP>();
 
     if (dsp) {
         set_fx_at(slot, std::move(dsp));
