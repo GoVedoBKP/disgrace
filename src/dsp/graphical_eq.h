@@ -98,7 +98,7 @@ public:
         return band < NUM_BANDS ? m_frequencies[band] : 0.0f;
     }
 
-    std::string get_state() override {
+    std::string get_state() const override {
         nlohmann::json j;
         nlohmann::json g = nlohmann::json::array();
         for (float v : m_gains) g.push_back(v);

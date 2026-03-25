@@ -44,7 +44,9 @@ private:
     wxButton* m_master_sel_btn;
     class VUMeter* m_master_meter_l;
     class VUMeter* m_master_meter_r;
-    class SpectralView* m_spectral_view;
+    class AnalogVUMeter* m_master_analog_l;
+    class AnalogVUMeter* m_master_analog_r;
+    class SpectralView* m_master_spectral;
 
     std::vector<std::pair<class VUMeter*, class VUMeter*>> m_track_meters;
     std::vector<std::pair<class VUMeter*, class VUMeter*>> m_bus_meters;

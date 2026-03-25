@@ -26,6 +26,7 @@ disgrace_SOURCES = \
     gui/wx_mixer_panel.cpp \
     gui/wx_settings_panel.cpp \
     gui/wx_vu_meter.cpp \
+    gui/wx_analog_vu_meter.cpp \
     gui/wx_waveform_view.cpp \
     gui/wx_spectral_view.cpp \
     gui/wx_transportbar.cpp \

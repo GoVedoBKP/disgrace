@@ -4,6 +4,8 @@
 #include <wx/panel.h>
 #include <memory>
 #include <vector>
+#include <memory>
+#include "../analysis/fft_analyzer.h"
 
 namespace disgrace_ns {
 
@@ -19,8 +21,10 @@ public:
 
 private:
     Engine& m_engine;
-    std::vector<float> m_history;
-    size_t m_fft_size = 1024;
+    std::unique_ptr<FFTAnalyzer> m_analyzer;
+    std::vector<float> m_fft_input;
+    std::vector<float> m_magnitudes;
+    size_t m_fft_size = 2048;
 
     wxDECLARE_EVENT_TABLE();
 };

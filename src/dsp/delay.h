@@ -38,7 +38,7 @@ public:
         }
     }
 
-    std::string get_state() override {
+    std::string get_state() const override {
         nlohmann::json j;
         j["feedback"] = feedback;
         j["mix"] = mix;

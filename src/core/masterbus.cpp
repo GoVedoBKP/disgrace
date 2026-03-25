@@ -14,6 +14,16 @@ float MasterBus::gain() const
     return m_gain.load();
 }
 
+void MasterBus::set_pan(float p)
+{
+    m_pan.store(p);
+}
+
+float MasterBus::pan() const
+{
+    return m_pan.load();
+}
+
 void MasterBus::set_mute(bool m)
 {
     m_muted.store(m);
@@ -34,16 +44,21 @@ void MasterBus::process(float* l,
                         float* r,
                         size_t nframes)
 {
-    m_chain.process(l, r, nframes);
+    m_filter.process(l, r, nframes);
+    m_styles.process(l, r, nframes);
 
-    float gain = m_muted.load() ? 0.f : m_gain.load();
+    float vol = m_muted.load() ? 0.f : m_gain.load();
+    float pan = m_pan.load();
+    float left_gain  = vol * (pan <= 0 ? 1.0f : 1.0f - pan);
+    float right_gain = vol * (pan >= 0 ? 1.0f : 1.0f + pan);
+
     float peak_l = 0.f;
     float peak_r = 0.f;
 
     for (size_t i = 0; i < nframes; ++i)
     {
-        float sl = l[i] * gain;
-        float sr = r[i] * gain;
+        float sl = l[i] * left_gain;
+        float sr = r[i] * right_gain;
 
         sl = soft_clip(sl);
         sr = soft_clip(sr);
@@ -86,47 +101,6 @@ float MasterBus::meter_l() const
 float MasterBus::meter_r() const
 {
     return m_meter_r.load();
-}
-
-void MasterBus::set_effect(size_t index, ::std::unique_ptr<disgrace_ns::DSP> dsp)
-{
-    m_chain.set(index, std::move(dsp));
-}
-
-void MasterBus::enable_effect(size_t index, bool en)
-{
-    m_chain.enable(index, en);
-}
-
-void MasterBus::move_effect_up(size_t index)
-{
-    m_chain.move_up(index);
-}
-
-void MasterBus::move_effect_down(size_t index)
-{
-    m_chain.move_down(index);
-}
-
-void MasterBus::remove_effect(size_t index)
-{
-    m_chain.remove(index);
-}
-
-void MasterBus::load_effect_chain(const std::string& path)
-{
-    m_chain.load_chain(path);
-}
-
-void MasterBus::save_effect_chain(const std::string& path)
-{
-    m_chain.save_chain(path);
-}
-
-disgrace_ns::DSP* MasterBus::get_effect(size_t index) const
-{
-    if (index >= disgrace_ns::MAX_INSERTS) return nullptr;
-    return m_chain.effects()[index].get();
 }
 
 } // namespace disgrace_ns

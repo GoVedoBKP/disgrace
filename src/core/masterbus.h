@@ -3,7 +3,8 @@
 #include <cstddef>
 #include <string>
 #include <memory>
-#include "../dsp/dsp_chain.h"
+#include "../dsp/mastering_filter.h"
+#include "../dsp/mastering_styles.h"
 
 namespace disgrace_ns
 {
@@ -13,6 +14,9 @@ class MasterBus
 public:
     void set_gain(float g);
     float gain() const;
+
+    void set_pan(float p);
+    float pan() const;
 
     void set_mute(bool m);
     bool muted() const;
@@ -24,19 +28,11 @@ public:
     float meter_l() const;
     float meter_r() const;
 
-    // Master DSP Chain
-    void set_effect(size_t index, ::std::unique_ptr<disgrace_ns::DSP> dsp);
-    void enable_effect(size_t index, bool en);
-    void move_effect_up(size_t index);
-    void move_effect_down(size_t index);
-    void remove_effect(size_t index);
-    disgrace_ns::DSP* get_effect(size_t index) const;
-
-    void load_effect_chain(const std::string& path);
-    void save_effect_chain(const std::string& path);
-
-    const disgrace_ns::DSPChain& chain() const { return m_chain; }
-    disgrace_ns::DSPChain& chain() { return m_chain; }
+    // Mastering Controls
+    disgrace_ns::MasteringFilterDSP& mastering_filter() { return m_filter; }
+    const disgrace_ns::MasteringFilterDSP& mastering_filter() const { return m_filter; }
+    disgrace_ns::MasteringStylesDSP& mastering_styles() { return m_styles; }
+    const disgrace_ns::MasteringStylesDSP& mastering_styles() const { return m_styles; }
 
     ::std::atomic<bool> m_is_recording{false};
     ::std::atomic<bool> m_export_mute{false};
@@ -47,10 +43,13 @@ private:
     float soft_clip(float x);
 
     ::std::atomic<float> m_gain{1.f};
+    ::std::atomic<float> m_pan{0.f};
     ::std::atomic<float> m_meter_l{0.f};
     ::std::atomic<float> m_meter_r{0.f};
     ::std::atomic<bool> m_muted{false};
-    disgrace_ns::DSPChain m_chain;
+
+    disgrace_ns::MasteringFilterDSP m_filter;
+    disgrace_ns::MasteringStylesDSP m_styles;
 };
 
 } // namespace disgrace_ns

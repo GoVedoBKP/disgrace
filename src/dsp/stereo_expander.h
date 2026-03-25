@@ -27,7 +27,7 @@ public:
         }
     }
 
-    std::string get_state() override {
+    std::string get_state() const override {
         nlohmann::json j;
         j["width"] = width;
         j["bypassed"] = m_bypassed;

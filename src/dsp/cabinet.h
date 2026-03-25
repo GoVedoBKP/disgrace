@@ -108,7 +108,7 @@ public:
         }
     }
 
-    std::string get_state() override {
+    std::string get_state() const override {
         nlohmann::json j;
         j["low_cut"] = low_cut;
         j["high_cut"] = high_cut;

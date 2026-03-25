@@ -65,7 +65,7 @@ public:
         }
     }
 
-    std::string get_state() override {
+    std::string get_state() const override {
         nlohmann::json j;
         j["room_size"] = room_size;
         j["damp"] = damp;

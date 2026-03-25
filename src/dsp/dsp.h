@@ -29,7 +29,7 @@ public:
     const std::string& current_preset() const { return m_current_preset; }
     void set_current_preset(const std::string& name) { m_current_preset = name; }
 
-    virtual std::string get_state() { return "{}"; }
+    virtual std::string get_state() const { return "{}"; }
     virtual void set_state(const std::string& state) {}
 
 protected:

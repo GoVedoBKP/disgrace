@@ -52,7 +52,7 @@ public:
         }
     }
 
-    std::string get_state() override {
+    std::string get_state() const override {
         nlohmann::json j;
         j["rate"] = rate;
         j["depth"] = depth;
