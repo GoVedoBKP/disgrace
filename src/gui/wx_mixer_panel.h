@@ -22,6 +22,7 @@ public:
     void update_mixer_ui();
     void update_meters();
     void update_effect_editor();
+    void update_mastering_panel();
 
     static const int kSelectedMaster = -1;
     static const int kSelectedTrackBase = 0;
@@ -47,6 +48,7 @@ private:
     class AnalogVUMeter* m_master_analog_l;
     class AnalogVUMeter* m_master_analog_r;
     class SpectralView* m_master_spectral;
+    wxScrolledWindow* m_mastering_ctrl_panel;
 
     std::vector<std::pair<class VUMeter*, class VUMeter*>> m_track_meters;
     std::vector<std::pair<class VUMeter*, class VUMeter*>> m_bus_meters;

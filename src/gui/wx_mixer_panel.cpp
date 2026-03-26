@@ -194,7 +194,13 @@ MixerPanel::MixerPanel(wxWindow* parent, Engine& engine)
     // Down part: graphical spectrum analyzer
     m_master_spectral = new SpectralView(master_visuals, wxID_ANY, m_engine);
     m_master_spectral->SetMinSize(wxSize(-1, 80));
-    master_visuals_sizer->Add(m_master_spectral, 1, wxEXPAND | wxALL, 2);
+    master_visuals_sizer->Add(m_master_spectral, 0, wxEXPAND | wxALL, 2);
+
+    // Mastering Controls
+    m_mastering_ctrl_panel = new wxScrolledWindow(master_visuals, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL);
+    m_mastering_ctrl_panel->SetScrollRate(0, 20);
+    m_mastering_ctrl_panel->SetMinSize(wxSize(350, -1));
+    master_visuals_sizer->Add(m_mastering_ctrl_panel, 1, wxEXPAND | wxALL, 2);
 
     master_visuals->SetSizer(master_visuals_sizer);
     master_top_row->Add(master_visuals, 1, wxEXPAND | wxALL, 2);
@@ -208,6 +214,69 @@ MixerPanel::MixerPanel(wxWindow* parent, Engine& engine)
 
     update_mixer_ui();
     update_effect_editor();
+    update_mastering_panel();
+}
+
+void MixerPanel::update_mastering_panel() {
+    m_is_updating_ui = true;
+    m_mastering_ctrl_panel->DestroyChildren();
+    
+    wxBoxSizer* params_sizer = new wxBoxSizer(wxVERTICAL);
+
+    // --- Mastering UI ---
+    wxStaticText* m_header = new wxStaticText(m_mastering_ctrl_panel, wxID_ANY, "Mastering Controls");
+    wxFont h_font = m_header->GetFont(); h_font.SetWeight(wxFONTWEIGHT_BOLD); m_header->SetFont(h_font);
+    params_sizer->Add(m_header, 0, wxALL, 5);
+
+    auto& filter = m_engine.m_master.mastering_filter();
+    auto& style = m_engine.m_master.mastering_styles();
+
+    // Helper to add sliders
+    auto add_m_slider = [&](const wxString& label, float min, float max, float val, std::function<void(float)> setter) {
+        wxBoxSizer* s_row = new wxBoxSizer(wxHORIZONTAL);
+        s_row->Add(new wxStaticText(m_mastering_ctrl_panel, wxID_ANY, label, wxDefaultPosition, wxSize(100, -1)), 0, wxALL, 5);
+        wxSlider* sl = new wxSlider(m_mastering_ctrl_panel, wxID_ANY, (int)(((val - min) / (max - min)) * 1000), 0, 1000, wxDefaultPosition, wxSize(200, -1));
+        sl->Bind(wxEVT_SLIDER, [this, min, max, setter](wxCommandEvent& ev) {
+            if (m_is_updating_ui) return;
+            setter(min + ((float)ev.GetInt() / 1000.0f) * (max - min));
+        });
+        s_row->Add(sl, 1, wxEXPAND | wxALL, 5);
+        params_sizer->Add(s_row, 0, wxEXPAND | wxALL, 2);
+    };
+
+    // Style Choice
+    wxBoxSizer* st_row = new wxBoxSizer(wxHORIZONTAL);
+    st_row->Add(new wxStaticText(m_mastering_ctrl_panel, wxID_ANY, "Master Style:", wxDefaultPosition, wxSize(100, -1)), 0, wxALL, 5);
+    wxChoice* st_choice = new wxChoice(m_mastering_ctrl_panel, wxID_ANY);
+    for (const auto& s : style.get_presets()) st_choice->Append(s);
+    st_choice->SetStringSelection(style.current_preset());
+    st_choice->Bind(wxEVT_CHOICE, [this, &style](wxCommandEvent& ev) {
+        if (m_is_updating_ui) return;
+        style.load_preset(ev.GetString().ToStdString());
+        update_mastering_panel();
+    });
+    st_row->Add(st_choice, 1, wxEXPAND | wxALL, 5);
+    params_sizer->Add(st_row, 0, wxEXPAND | wxALL, 2);
+
+    params_sizer->Add(new wxStaticLine(m_mastering_ctrl_panel), 0, wxEXPAND | wxALL, 5);
+    params_sizer->Add(new wxStaticText(m_mastering_ctrl_panel, wxID_ANY, "Filters"), 0, wxALL, 5);
+
+    wxCheckBox* hpf_en = new wxCheckBox(m_mastering_ctrl_panel, wxID_ANY, "High Pass Filter");
+    hpf_en->SetValue(filter.hpf_enabled);
+    hpf_en->Bind(wxEVT_CHECKBOX, [this, &filter](wxCommandEvent& ev) { filter.hpf_enabled = ev.IsChecked(); });
+    params_sizer->Add(hpf_en, 0, wxALL, 5);
+    add_m_slider("HPF Freq", 20.0f, 500.0f, filter.hpf_freq, [&filter](float v){ filter.hpf_freq = v; filter.update_filters(); });
+
+    wxCheckBox* lpf_en = new wxCheckBox(m_mastering_ctrl_panel, wxID_ANY, "Low Pass Filter");
+    lpf_en->SetValue(filter.lpf_enabled);
+    lpf_en->Bind(wxEVT_CHECKBOX, [this, &filter](wxCommandEvent& ev) { filter.lpf_enabled = ev.IsChecked(); });
+    params_sizer->Add(lpf_en, 0, wxALL, 5);
+    add_m_slider("LPF Freq", 5000.0f, 20000.0f, filter.lpf_freq, [&filter](float v){ filter.lpf_freq = v; filter.update_filters(); });
+
+    m_mastering_ctrl_panel->SetSizer(params_sizer);
+    m_mastering_ctrl_panel->Layout();
+    m_mastering_ctrl_panel->FitInside();
+    m_is_updating_ui = false;
 }
 
 void MixerPanel::update_mixer_ui() {
@@ -421,16 +490,18 @@ void MixerPanel::update_effect_editor() {
     wxBoxSizer* params_sizer = new wxBoxSizer(wxVERTICAL);
 
     if (is_master) {
-        // --- Mastering UI ---
-        wxStaticText* m_header = new wxStaticText(m_fx_params_group, wxID_ANY, "Mastering Controls");
-        wxFont h_font = m_header->GetFont(); h_font.SetWeight(wxFONTWEIGHT_BOLD); m_header->SetFont(h_font);
-        params_sizer->Add(m_header, 0, wxALL, 5);
+        params_sizer->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "Styles and Filters are in the master pane on the right."), 0, wxALL, 5);
+        params_sizer->Add(new wxStaticLine(m_fx_params_group), 0, wxEXPAND | wxALL, 5);
 
-        auto& filter = m_engine.m_master.mastering_filter();
-        auto& style = m_engine.m_master.mastering_styles();
+        // --- Reference Matcher Section ---
+        wxStaticText* rm_header = new wxStaticText(m_fx_params_group, wxID_ANY, "Reference Matcher");
+        wxFont rm_font = rm_header->GetFont(); rm_font.SetWeight(wxFONTWEIGHT_BOLD); rm_header->SetFont(rm_font);
+        params_sizer->Add(rm_header, 0, wxALL, 5);
+
+        auto& matcher = m_engine.m_master.reference_matcher();
 
         // Helper to add sliders
-        auto add_m_slider = [&](const wxString& label, float min, float max, float val, std::function<void(float)> setter) {
+        auto add_rm_slider = [&](const wxString& label, float min, float max, float val, std::function<void(float)> setter) {
             wxBoxSizer* s_row = new wxBoxSizer(wxHORIZONTAL);
             s_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, label, wxDefaultPosition, wxSize(100, -1)), 0, wxALL, 5);
             wxSlider* sl = new wxSlider(m_fx_params_group, wxID_ANY, (int)(((val - min) / (max - min)) * 1000), 0, 1000, wxDefaultPosition, wxSize(200, -1));
@@ -441,42 +512,6 @@ void MixerPanel::update_effect_editor() {
             s_row->Add(sl, 1, wxEXPAND | wxALL, 5);
             params_sizer->Add(s_row, 0, wxEXPAND | wxALL, 2);
         };
-
-        // Style Choice
-        wxBoxSizer* st_row = new wxBoxSizer(wxHORIZONTAL);
-        st_row->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "Master Style:", wxDefaultPosition, wxSize(100, -1)), 0, wxALL, 5);
-        wxChoice* st_choice = new wxChoice(m_fx_params_group, wxID_ANY);
-        for (const auto& s : style.get_presets()) st_choice->Append(s);
-        st_choice->SetStringSelection(style.current_preset());
-        st_choice->Bind(wxEVT_CHOICE, [this, &style](wxCommandEvent& ev) {
-            if (m_is_updating_ui) return;
-            style.load_preset(ev.GetString().ToStdString());
-        });
-        st_row->Add(st_choice, 1, wxEXPAND | wxALL, 5);
-        params_sizer->Add(st_row, 0, wxEXPAND | wxALL, 2);
-
-        params_sizer->Add(new wxStaticLine(m_fx_params_group), 0, wxEXPAND | wxALL, 5);
-        params_sizer->Add(new wxStaticText(m_fx_params_group, wxID_ANY, "Filters"), 0, wxALL, 5);
-
-        wxCheckBox* hpf_en = new wxCheckBox(m_fx_params_group, wxID_ANY, "High Pass Filter");
-        hpf_en->SetValue(filter.hpf_enabled);
-        hpf_en->Bind(wxEVT_CHECKBOX, [this, &filter](wxCommandEvent& ev) { filter.hpf_enabled = ev.IsChecked(); });
-        params_sizer->Add(hpf_en, 0, wxALL, 5);
-        add_m_slider("HPF Freq", 20.0f, 500.0f, filter.hpf_freq, [&filter](float v){ filter.hpf_freq = v; filter.update_filters(); });
-
-        wxCheckBox* lpf_en = new wxCheckBox(m_fx_params_group, wxID_ANY, "Low Pass Filter");
-        lpf_en->SetValue(filter.lpf_enabled);
-        lpf_en->Bind(wxEVT_CHECKBOX, [this, &filter](wxCommandEvent& ev) { filter.lpf_enabled = ev.IsChecked(); });
-        params_sizer->Add(lpf_en, 0, wxALL, 5);
-        add_m_slider("LPF Freq", 5000.0f, 20000.0f, filter.lpf_freq, [&filter](float v){ filter.lpf_freq = v; filter.update_filters(); });
-
-        // --- Reference Matcher Section ---
-        params_sizer->Add(new wxStaticLine(m_fx_params_group), 0, wxEXPAND | wxALL, 5);
-        wxStaticText* rm_header = new wxStaticText(m_fx_params_group, wxID_ANY, "Reference Matcher");
-        wxFont rm_font = rm_header->GetFont(); rm_font.SetWeight(wxFONTWEIGHT_BOLD); rm_header->SetFont(rm_font);
-        params_sizer->Add(rm_header, 0, wxALL, 5);
-
-        auto& matcher = m_engine.m_master.reference_matcher();
 
         // Reference file info
         wxBoxSizer* ref_row = new wxBoxSizer(wxHORIZONTAL);
@@ -538,10 +573,10 @@ void MixerPanel::update_effect_editor() {
         params_sizer->Add(match_row, 0, wxEXPAND | wxALL, 2);
 
         // Mix slider
-        add_m_slider("Mix", 0.0f, 1.0f, matcher.get_mix(), [&matcher](float v){ matcher.set_mix(v); });
+        add_rm_slider("Mix", 0.0f, 1.0f, matcher.get_mix(), [&matcher](float v){ matcher.set_mix(v); });
 
         // Target RMS
-        add_m_slider("Target RMS (dB)", -24.0f, -6.0f, matcher.get_target_rms(), [&matcher](float v){ matcher.set_target_rms(v); });
+        add_rm_slider("Target RMS (dB)", -24.0f, -6.0f, matcher.get_target_rms(), [&matcher](float v){ matcher.set_target_rms(v); });
 
         // Limiter controls
         wxBoxSizer* limit_row = new wxBoxSizer(wxHORIZONTAL);
@@ -550,9 +585,8 @@ void MixerPanel::update_effect_editor() {
         limit_en->Bind(wxEVT_CHECKBOX, [this, &matcher](wxCommandEvent& ev) { matcher.set_limit(ev.IsChecked()); });
         limit_row->Add(limit_en, 0, wxALL, 5);
 
-        add_m_slider("Ceiling", 0.8f, 1.0f, matcher.get_limit_threshold(), [&matcher](float v){ matcher.set_limit_threshold(v); });
+        add_rm_slider("Ceiling", 0.8f, 1.0f, matcher.get_limit_threshold(), [&matcher](float v){ matcher.set_limit_threshold(v); });
         params_sizer->Add(limit_row, 0, wxEXPAND | wxALL, 2);
-
     } else {
         // --- Regular Track/Bus UI ---
         auto get_fx = [&](size_t idx) -> DSP* {
@@ -777,6 +811,9 @@ void MixerPanel::update_effect_editor() {
     m_fx_params_group->SetSizer(params_sizer);
     m_fx_params_group->Layout();
     m_fx_params_group->FitInside();
+    
+    update_mastering_panel();
+    
     m_is_updating_ui = false;
 }
 
