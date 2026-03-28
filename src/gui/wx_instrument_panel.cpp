@@ -1186,10 +1186,12 @@ void InstrumentPanel::on_zyn_next(wxCommandEvent& event) {
 }
 
 void InstrumentPanel::on_detach(wxCommandEvent& event) {
-    if (!m_detached_window) {
-        Hide();
-        m_detached_window = new DetachedFrame(this, "Instruments", GetParent(), m_tab_index);
+    if (m_detached_window) {
+        return;
     }
+    Hide();
+    m_detached_window = new DetachedFrame(this, "Instruments", GetParent(), m_tab_index);
+    m_detached_window->set_on_detach_callback([this]() { m_detached_window = nullptr; });
 }
 
 } // namespace disgrace_ns

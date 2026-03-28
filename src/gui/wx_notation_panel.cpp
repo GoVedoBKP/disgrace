@@ -66,10 +66,12 @@ void NotationPanel::on_zoom_out(wxCommandEvent& event) { m_notation_view->zoom_o
 void NotationPanel::on_view_all(wxCommandEvent& event) { m_notation_view->view_all(); }
 void NotationPanel::on_view_sel(wxCommandEvent& event) { m_notation_view->view_selection(); }
 void NotationPanel::on_detach(wxCommandEvent& event) {
-    if (!m_detached_frame) {
-        Hide();
-        m_detached_frame = new DetachedFrame(this, "Notation", GetParent(), m_tab_index);
+    if (m_detached_frame) {
+        return;
     }
+    Hide();
+    m_detached_frame = new DetachedFrame(this, "Notation", GetParent(), m_tab_index);
+    m_detached_frame->set_on_detach_callback([this]() { m_detached_frame = nullptr; });
 }
 
 wxBEGIN_EVENT_TABLE(NotationView, wxScrolledWindow)

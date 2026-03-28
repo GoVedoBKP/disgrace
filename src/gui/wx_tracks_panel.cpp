@@ -114,10 +114,12 @@ void TracksPanel::on_zoom_out(wxCommandEvent& event) { m_tracks_view->zoom_out()
 void TracksPanel::on_view_all(wxCommandEvent& event) { m_tracks_view->view_all(); }
 void TracksPanel::on_view_sel(wxCommandEvent& event) { m_tracks_view->view_selection(); }
 void TracksPanel::on_detach(wxCommandEvent& event) {
-    if (!m_detached_frame) {
-        Hide();
-        m_detached_frame = new DetachedFrame(this, "Tracks", GetParent(), m_tab_index);
+    if (m_detached_frame) {
+        return;
     }
+    Hide();
+    m_detached_frame = new DetachedFrame(this, "Tracks", GetParent(), m_tab_index);
+    m_detached_frame->set_on_detach_callback([this]() { m_detached_frame = nullptr; });
 }
 
 wxBEGIN_EVENT_TABLE(TracksView, wxScrolledWindow)

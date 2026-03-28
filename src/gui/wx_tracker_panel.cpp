@@ -144,10 +144,12 @@ void TrackerPanel::on_follow_playback(wxCommandEvent& event) {
 }
 
 void TrackerPanel::on_detach(wxCommandEvent& event) {
-    if (!m_detached_frame) {
-        Hide();
-        m_detached_frame = new DetachedFrame(this, "Tracker", GetParent(), m_tab_index);
+    if (m_detached_frame) {
+        return;
     }
+    Hide();
+    m_detached_frame = new DetachedFrame(this, "Tracker", GetParent(), m_tab_index);
+    m_detached_frame->set_on_detach_callback([this]() { m_detached_frame = nullptr; });
 }
 
 void TrackerPanel::update_pattern_list() {
