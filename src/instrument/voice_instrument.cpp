@@ -24,6 +24,8 @@
 #include <algorithm>
 #include <cmath>
 #include <samplerate.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace disgrace_ns {
 
@@ -131,10 +133,18 @@ bool VoiceInstrument::synthesize_text(const std::string& text, float base_freq) 
     // Create cache key with pitch
     std::string cache_key = make_cache_key(text, pitch_factor);
     
-    // Check cache first (including pitch)
+    // Check memory cache first
     auto cache_it = m_audio_cache.find(cache_key);
     if (cache_it != m_audio_cache.end()) {
         m_current_audio = cache_it->second;
+        return true;
+    }
+    
+    // Check disk cache
+    CachedAudio disk_audio;
+    if (load_from_disk_cache(cache_key, disk_audio)) {
+        m_audio_cache[cache_key] = disk_audio;
+        m_current_audio = disk_audio;
         return true;
     }
     
@@ -168,10 +178,14 @@ bool VoiceInstrument::synthesize_text(const std::string& text, float base_freq) 
         out_r = pitched_r;
     }
     
-    // Cache the pitch-shifted result
-    m_audio_cache[cache_key] = {out_l, out_r};
-    m_current_audio = m_audio_cache[cache_key];
+    // Cache the pitch-shifted result in memory
+    CachedAudio final_audio = {out_l, out_r};
+    m_audio_cache[cache_key] = final_audio;
+    m_current_audio = final_audio;
     m_current_text = text;
+    
+    // Save to disk cache for future sessions
+    save_to_disk_cache(cache_key, final_audio);
     
     return true;
 }
@@ -320,6 +334,78 @@ std::string VoiceInstrument::make_cache_key(const std::string& text, float pitch
     // Round pitch_factor to 2 decimals to avoid cache misses from float precision
     int pitch_int = (int)(pitch_factor * 100.0f);
     return text + "@" + std::to_string(pitch_int);
+}
+
+std::string VoiceInstrument::get_cache_file_path(const std::string& cache_key) const {
+    if (m_cache_dir.empty()) {
+        return "";
+    }
+    // Create safe filename from cache key (replace @ with -)
+    std::string safe_key = cache_key;
+    for (auto& c : safe_key) {
+        if (c == '@' || c == '/' || c == '\\') {
+            c = '-';
+        }
+    }
+    return m_cache_dir + "/" + safe_key + ".wav";
+}
+
+bool VoiceInstrument::load_from_disk_cache(const std::string& cache_key, CachedAudio& out_audio) {
+    if (m_cache_dir.empty()) {
+        return false;
+    }
+    
+    std::string path = get_cache_file_path(cache_key);
+    if (path.empty()) {
+        return false;
+    }
+    
+    // Check if file exists
+    struct stat buffer;
+    if (stat(path.c_str(), &buffer) != 0) {
+        return false;  // File doesn't exist
+    }
+    
+    // Load WAV file
+    return load_wav_from_file(path, out_audio.left, out_audio.right);
+}
+
+bool VoiceInstrument::save_to_disk_cache(const std::string& cache_key, const CachedAudio& audio) {
+    if (m_cache_dir.empty()) {
+        return false;
+    }
+    
+    // Create cache directory if needed
+    mkdir(m_cache_dir.c_str(), 0755);
+    
+    std::string path = get_cache_file_path(cache_key);
+    if (path.empty()) {
+        return false;
+    }
+    
+    // Save as WAV file
+    SF_INFO sf_info = {};
+    sf_info.samplerate = 44100;  // Standard rate
+    sf_info.channels = 2;
+    sf_info.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
+    
+    SNDFILE* file = sf_open(path.c_str(), SFM_WRITE, &sf_info);
+    if (!file) {
+        return false;
+    }
+    
+    // Interleave samples: L, R, L, R, ...
+    std::vector<float> interleaved;
+    interleaved.reserve(audio.left.size() * 2);
+    for (size_t i = 0; i < audio.left.size(); ++i) {
+        interleaved.push_back(audio.left[i]);
+        interleaved.push_back(audio.right[i]);
+    }
+    
+    sf_count_t written = sf_writef_float(file, interleaved.data(), audio.left.size());
+    sf_close(file);
+    
+    return written == (sf_count_t)audio.left.size();
 }
 
 bool VoiceInstrument::apply_libsamplerate_pitch(const std::vector<float>& in_left, 

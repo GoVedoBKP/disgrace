@@ -65,6 +65,10 @@ public:
     void clear_cache();
     size_t cache_size() const { return m_audio_cache.size(); }
     
+    // Disk cache for persistence across sessions
+    void set_cache_dir(const std::string& dir) { m_cache_dir = dir; }
+    std::string get_cache_dir() const { return m_cache_dir; }
+    
     // Worker thread for batch synthesis
     VoiceSynthesisWorker* get_worker() { return m_worker; }
     void start_synthesis_worker();
@@ -101,6 +105,11 @@ private:
     // Helper to generate cache key including pitch
     std::string make_cache_key(const std::string& text, float pitch_factor) const;
     
+    // Disk cache helpers
+    std::string get_cache_file_path(const std::string& cache_key) const;
+    bool load_from_disk_cache(const std::string& cache_key, CachedAudio& out_audio);
+    bool save_to_disk_cache(const std::string& cache_key, const CachedAudio& audio);
+    
     // High-quality pitch shifting using libsamplerate
     bool apply_libsamplerate_pitch(const std::vector<float>& in_left, 
                                    const std::vector<float>& in_right,
@@ -113,6 +122,7 @@ private:
     CachedAudio m_current_audio;
     size_t m_playback_pos = 0;
     bool m_playing = false;
+    std::string m_cache_dir;  // Disk cache directory
     
     // TTS synthesis helpers
     bool synthesize_with_espeak(const std::string& text, std::vector<float>& out_l, std::vector<float>& out_r);
