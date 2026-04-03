@@ -23,6 +23,7 @@
 #include <sndfile.h>
 #include <algorithm>
 #include <cmath>
+#include <samplerate.h>
 
 namespace disgrace_ns {
 
@@ -102,36 +103,17 @@ void VoiceInstrument::process(float* l, float* r, size_t nframes) {
     }
     
     size_t audio_len = m_current_audio.left.size();
-    float pitch_factor = m_current_pitch;
     
-    // Clamp pitch factor to reasonable range (0.5x to 2x)
-    pitch_factor = std::max(0.5f, std::min(2.0f, pitch_factor));
-    
+    // Playback at normal speed (pitch shifting already applied in cache)
     for (size_t i = 0; i < nframes; ++i) {
-        if (m_playback_pos >= audio_len * pitch_factor) {
+        if (m_playback_pos >= audio_len) {
             m_playing = false;
             break;
         }
         
-        // Calculate source index with pitch shift
-        float src_pos = m_playback_pos / pitch_factor;
-        size_t src_idx = (size_t)src_pos;
-        
-        if (src_idx >= audio_len) {
-            m_playing = false;
-            break;
-        }
-        
-        // Linear interpolation for smooth pitch shifting
-        float frac = src_pos - src_idx;
-        size_t next_idx = std::min(src_idx + 1, audio_len - 1);
-        
-        float left_sample = m_current_audio.left[src_idx] * (1.0f - frac) + m_current_audio.left[next_idx] * frac;
-        float right_sample = m_current_audio.right[src_idx] * (1.0f - frac) + m_current_audio.right[next_idx] * frac;
-        
-        // Apply volume
-        l[i] = left_sample * m_volume;
-        r[i] = right_sample * m_volume;
+        // Direct sample output (no pitch shifting needed)
+        l[i] = m_current_audio.left[m_playback_pos] * m_volume;
+        r[i] = m_current_audio.right[m_playback_pos] * m_volume;
         
         m_playback_pos += 1.0f;
     }
@@ -142,14 +124,21 @@ bool VoiceInstrument::synthesize_text(const std::string& text, float base_freq) 
         return false;
     }
     
-    // Check cache first
-    auto cache_it = m_audio_cache.find(text);
+    // Calculate pitch factor (relative to 440 Hz)
+    float pitch_factor = base_freq / 440.0f;
+    pitch_factor = std::max(0.5f, std::min(2.0f, pitch_factor));
+    
+    // Create cache key with pitch
+    std::string cache_key = make_cache_key(text, pitch_factor);
+    
+    // Check cache first (including pitch)
+    auto cache_it = m_audio_cache.find(cache_key);
     if (cache_it != m_audio_cache.end()) {
         m_current_audio = cache_it->second;
         return true;
     }
     
-    // Synthesize based on mode
+    // Synthesize base text (at 440 Hz)
     std::vector<float> out_l, out_r;
     
     switch (m_tts_mode) {
@@ -169,9 +158,20 @@ bool VoiceInstrument::synthesize_text(const std::string& text, float base_freq) 
         return false;
     }
     
-    // Cache the result
-    m_audio_cache[text] = {out_l, out_r};
-    m_current_audio = m_audio_cache[text];
+    // Apply pitch shifting with libsamplerate if pitch != 1.0
+    if (std::abs(pitch_factor - 1.0f) > 0.001f) {
+        std::vector<float> pitched_l, pitched_r;
+        if (!apply_libsamplerate_pitch(out_l, out_r, pitch_factor, pitched_l, pitched_r)) {
+            return false;
+        }
+        out_l = pitched_l;
+        out_r = pitched_r;
+    }
+    
+    // Cache the pitch-shifted result
+    m_audio_cache[cache_key] = {out_l, out_r};
+    m_current_audio = m_audio_cache[cache_key];
+    m_current_text = text;
     
     return true;
 }
@@ -312,6 +312,91 @@ bool VoiceInstrument::load_wav_from_file(const std::string& filepath, std::vecto
     } else {
         return false;
     }
+    
+    return true;
+}
+
+std::string VoiceInstrument::make_cache_key(const std::string& text, float pitch_factor) const {
+    // Round pitch_factor to 2 decimals to avoid cache misses from float precision
+    int pitch_int = (int)(pitch_factor * 100.0f);
+    return text + "@" + std::to_string(pitch_int);
+}
+
+bool VoiceInstrument::apply_libsamplerate_pitch(const std::vector<float>& in_left, 
+                                                const std::vector<float>& in_right,
+                                                float pitch_factor,
+                                                std::vector<float>& out_left,
+                                                std::vector<float>& out_right) {
+    out_left.clear();
+    out_right.clear();
+    
+    if (in_left.empty()) {
+        return false;
+    }
+    
+    // Clamp pitch factor to reasonable range
+    pitch_factor = std::max(0.5f, std::min(2.0f, pitch_factor));
+    
+    // If pitch is 1.0, just copy
+    if (std::abs(pitch_factor - 1.0f) < 0.001f) {
+        out_left = in_left;
+        out_right = in_right;
+        return true;
+    }
+    
+    // Output length = input_length / pitch_factor
+    // (higher pitch = shorter duration, lower pitch = longer duration)
+    size_t out_frames = (size_t)(in_left.size() / pitch_factor);
+    
+    // Create SRC state for each channel
+    int error = 0;
+    SRC_STATE* src_l = src_new(SRC_SINC_BEST_QUALITY, 1, &error);  // Highest quality
+    if (!src_l) {
+        return false;
+    }
+    
+    SRC_STATE* src_r = src_new(SRC_SINC_BEST_QUALITY, 1, &error);
+    if (!src_r) {
+        src_delete(src_l);
+        return false;
+    }
+    
+    // Prepare input/output data
+    SRC_DATA src_data = {};
+    src_data.data_in = const_cast<float*>(in_left.data());
+    src_data.input_frames = in_left.size();
+    src_data.src_ratio = 1.0 / pitch_factor;  // Resample ratio
+    
+    // Allocate output buffer
+    std::vector<float> out_buf_l(out_frames);
+    std::vector<float> out_buf_r(out_frames);
+    src_data.data_out = out_buf_l.data();
+    src_data.output_frames = out_frames;
+    
+    // Process left channel
+    error = src_process(src_l, &src_data);
+    if (error) {
+        src_delete(src_l);
+        src_delete(src_r);
+        return false;
+    }
+    
+    // Process right channel
+    src_data.data_in = const_cast<float*>(in_right.data());
+    src_data.data_out = out_buf_r.data();
+    src_data.output_frames = out_frames;
+    error = src_process(src_r, &src_data);
+    
+    src_delete(src_l);
+    src_delete(src_r);
+    
+    if (error) {
+        return false;
+    }
+    
+    // Copy to output
+    out_left.assign(out_buf_l.begin(), out_buf_l.begin() + src_data.output_frames_gen);
+    out_right.assign(out_buf_r.begin(), out_buf_r.begin() + src_data.output_frames_gen);
     
     return true;
 }

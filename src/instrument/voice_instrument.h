@@ -90,12 +90,23 @@ private:
     // Text storage per column
     std::array<std::string, 16> m_column_text;
     
-    // Audio cache: text → {samples_left, samples_right}
+    // Audio cache: "{text}@{pitch_factor}" → {samples_left, samples_right}
+    // Using pitch in cache key allows pre-shifted audio to be reused
     struct CachedAudio {
         std::vector<float> left;
         std::vector<float> right;
     };
     std::map<std::string, CachedAudio> m_audio_cache;
+    
+    // Helper to generate cache key including pitch
+    std::string make_cache_key(const std::string& text, float pitch_factor) const;
+    
+    // High-quality pitch shifting using libsamplerate
+    bool apply_libsamplerate_pitch(const std::vector<float>& in_left, 
+                                   const std::vector<float>& in_right,
+                                   float pitch_factor,
+                                   std::vector<float>& out_left,
+                                   std::vector<float>& out_right);
     
     // Playback state
     std::string m_current_text;
