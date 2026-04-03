@@ -43,22 +43,21 @@ void VoiceInstrument::note_on(uint8_t note, uint8_t velocity, size_t column_inde
     // Get text for this note
     std::string text = m_column_text[column_index];
     
+    // Convert MIDI note to frequency (A4 = 440 Hz, note 69)
+    float note_freq = 440.0f * std::pow(2.0f, (note - 69) / 12.0f);
+    
     if (!text.empty()) {
-        // New text: synthesize it
-        float note_freq = 440.0f * std::pow(2.0f, (note - 69) / 12.0f);
-        
-        if (synthesize_text(text, note_freq)) {
+        // New text: synthesize it at base pitch (A4 = 440 Hz)
+        if (synthesize_text(text, 440.0f)) {
             m_current_text = text;
             m_playback_pos = 0;
+            m_current_pitch = note_freq / 440.0f;  // Set pitch shift factor
             m_playing = true;
         }
     } else if (!m_current_text.empty() && m_playing) {
-        // No text: continue with pitch shift
-        float note_freq = 440.0f * std::pow(2.0f, (note - 69) / 12.0f);
-        // Calculate pitch shift factor
-        float base_freq = 440.0f * std::pow(2.0f, (69 - 69) / 12.0f); // A4 as base
-        m_current_pitch = note_freq / base_freq;
-        m_playback_pos = 0;
+        // No text: pitch shift the current phrase to this note
+        m_current_pitch = note_freq / 440.0f;
+        m_playback_pos = 0;  // Restart playback at new pitch
     }
 }
 
@@ -104,29 +103,36 @@ void VoiceInstrument::process(float* l, float* r, size_t nframes) {
     size_t audio_len = m_current_audio.left.size();
     float pitch_factor = m_current_pitch;
     
+    // Clamp pitch factor to reasonable range (0.5x to 2x)
+    pitch_factor = std::max(0.5f, std::min(2.0f, pitch_factor));
+    
     for (size_t i = 0; i < nframes; ++i) {
-        if (m_playback_pos >= audio_len) {
+        if (m_playback_pos >= audio_len * pitch_factor) {
             m_playing = false;
             break;
         }
         
-        size_t src_idx = (size_t)(m_playback_pos / pitch_factor);
+        // Calculate source index with pitch shift
+        float src_pos = m_playback_pos / pitch_factor;
+        size_t src_idx = (size_t)src_pos;
+        
         if (src_idx >= audio_len) {
             m_playing = false;
             break;
         }
         
-        // Simple linear interpolation for pitch shifting
-        float frac = (m_playback_pos / pitch_factor) - src_idx;
+        // Linear interpolation for smooth pitch shifting
+        float frac = src_pos - src_idx;
         size_t next_idx = std::min(src_idx + 1, audio_len - 1);
         
         float left_sample = m_current_audio.left[src_idx] * (1.0f - frac) + m_current_audio.left[next_idx] * frac;
         float right_sample = m_current_audio.right[src_idx] * (1.0f - frac) + m_current_audio.right[next_idx] * frac;
         
+        // Apply volume
         l[i] = left_sample * m_volume;
         r[i] = right_sample * m_volume;
         
-        m_playback_pos += pitch_factor;
+        m_playback_pos += 1.0f;
     }
 }
 
