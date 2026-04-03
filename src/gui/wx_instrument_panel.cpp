@@ -688,7 +688,7 @@ void InstrumentPanel::update_instrument_list() {
         row_sizer->Add(name, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 2);
         
         wxChoice* type = new wxChoice(row, wxID_ANY);
-        type->Append("None"); type->Append("Sampler"); type->Append("SoundFont"); type->Append("Plugin"); type->Append("Midi");
+        type->Append("None"); type->Append("Sampler"); type->Append("SoundFont"); type->Append("Plugin"); type->Append("Midi"); type->Append("Voice");
         type->SetSelection((int)inst.type());
         type->Bind(wxEVT_CHOICE, [this, i](wxCommandEvent& ev){
             int sel_idx = ev.GetSelection();
