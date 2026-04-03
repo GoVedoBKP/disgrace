@@ -674,6 +674,12 @@ void TracksView::do_cut() {
     int num_tracks = (int)m_engine.track_count();
     if (m_selected_track >= num_tracks) return;
     
+    auto& track = m_engine.track(m_selected_track);
+    auto inst = track.instrument();
+    if (!inst || inst->type() != InstrumentType::Sampler) {
+        return;
+    }
+    
     int start_tick = std::min(m_sel_start_tick, m_sel_end_tick);
     int end_tick = std::max(m_sel_start_tick, m_sel_end_tick);
     
@@ -686,7 +692,6 @@ void TracksView::do_cut() {
     size_t start_sample = (size_t)start_tick;
     size_t end_sample = (size_t)end_tick;
     
-    auto& track = m_engine.track(m_selected_track);
     auto cmd = std::make_unique<disgrace_ns::TrackCutCommand>(track, m_engine, start_sample, end_sample);
     m_engine.undo_stack().execute(std::move(cmd));
     
