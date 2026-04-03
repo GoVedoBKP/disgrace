@@ -36,8 +36,10 @@
 #include <wx/filename.h>
 #include <wx/numdlg.h>
 #include <wx/artprov.h>
+#include <wx/progdlg.h>
 #include <dlfcn.h>
 #include <algorithm>
+#include <set>
 
 namespace disgrace_ns {
 
@@ -469,6 +471,40 @@ InstrumentPanel::InstrumentPanel(wxWindow* parent, Engine& engine)
     });
     voice_tts_sizer->Add(m_voice_tts_mode_ch, 1, wxEXPAND | wxALL, 5);
     voice_sizer->Add(voice_tts_sizer, 0, wxEXPAND | wxALL, 5);
+    
+    // Process button
+    m_voice_process_btn = new wxButton(m_voice_editor, wxID_ANY, "Pre-render Voice Audio");
+    m_voice_process_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent& ev) {
+        if (m_selected_instrument >= 0) {
+            auto& inst = m_engine.instrument(m_selected_instrument);
+            if (inst.type() == InstrumentType::Voice) {
+                VoiceInstrument* voice = static_cast<VoiceInstrument*>(&inst);
+                // Scan all texts from this voice instrument
+                std::set<std::string> unique_texts;
+                for (size_t col = 0; col < 16; ++col) {
+                    std::string text = voice->get_text(col);
+                    if (!text.empty()) {
+                        unique_texts.insert(text);
+                    }
+                }
+                
+                // Pre-render all texts
+                if (!unique_texts.empty()) {
+                    wxProgressDialog dlg("Pre-rendering Voice Audio", "Synthesizing phrases...", unique_texts.size(), this,
+                        wxPD_APP_MODAL | wxPD_AUTO_HIDE);
+                    size_t count = 0;
+                    for (const auto& text : unique_texts) {
+                        dlg.Update(count++);
+                        voice->synthesize_text(text, 440.0f);
+                    }
+                    wxMessageBox(wxString::Format("Pre-rendered %zu unique phrases", unique_texts.size()), "Complete");
+                } else {
+                    wxMessageBox("No text found in this voice instrument", "Info");
+                }
+            }
+        }
+    });
+    voice_sizer->Add(m_voice_process_btn, 0, wxEXPAND | wxALL, 5);
     
     m_voice_editor->SetSizer(voice_sizer);
     m_voice_editor->Hide();
