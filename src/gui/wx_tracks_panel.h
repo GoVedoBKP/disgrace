@@ -77,6 +77,8 @@ public:
 private:
     int tick_to_x(int tick);
     int x_to_tick(int x);
+    int get_track_height(int track_idx) const;
+    void toggle_track_minimize(int track_idx);
 
     Engine& m_engine;
     double m_zoom = 10.0;

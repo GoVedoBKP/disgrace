@@ -177,6 +177,24 @@ int TracksView::get_total_ticks() {
 int TracksView::tick_to_x(int tick) { return (int)(tick * m_zoom); }
 int TracksView::x_to_tick(int x) { return (m_zoom > 0) ? (int)(x / m_zoom) : 0; }
 
+int TracksView::get_track_height(int track_idx) const {
+    if (track_idx < 0 || (size_t)track_idx >= m_engine.track_count()) {
+        return 80;
+    }
+    auto& track = m_engine.track(track_idx);
+    return track.is_minimized() ? 20 : 80;
+}
+
+void TracksView::toggle_track_minimize(int track_idx) {
+    if (track_idx < 0 || (size_t)track_idx >= m_engine.track_count()) {
+        return;
+    }
+    auto& track = m_engine.track(track_idx);
+    track.set_minimized(!track.is_minimized());
+    update_view();
+    Refresh();
+}
+
 void TracksView::OnPaint(wxPaintEvent& event) {
     wxPaintDC dc(this);
     PrepareDC(dc);
@@ -248,111 +266,135 @@ void TracksView::draw(wxDC& dc) {
     }
 
     // Draw Tracks
+    int cur_y = 30;
     for (int t = 0; t < num_tracks; ++t) {
-        int ty = 30 + t * track_h;
+        auto& track_obj = m_engine.track(t);
+        int track_h_actual = track_obj.is_minimized() ? 20 : 80;
+        int ty = cur_y;
+        cur_y += track_h_actual;
 
         // Track Header
         dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_bg_color)));
         dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_fg_color)));
-        dc.DrawRectangle(0, ty, header_w, track_h - 1);
+        dc.DrawRectangle(0, ty, header_w, track_h_actual - 1);
 
-        auto& track_obj = m_engine.track(t);
+        // Minimize button (- for expanded, + for minimized)
+        int btn_w = 20;
+        int btn_h = 18;
+        int btn_x = 5;
+        int btn_y = ty + (track_h_actual - btn_h) / 2;
+        
+        dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_lpb_highlight)));
+        dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_fg_color)));
+        dc.DrawRectangle(btn_x, btn_y, btn_w, btn_h);
+        
+        dc.SetTextForeground(*wxWHITE);
+        wxFont btn_font(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+        dc.SetFont(btn_font);
+        wxString btn_text = track_obj.is_minimized() ? "+" : "-";
+        dc.DrawText(btn_text, btn_x + 6, btn_y + 2);
+
         wxFont bold_font(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
         dc.SetFont(bold_font);
         dc.SetTextForeground(*wxWHITE);
         wxString name = track_obj.name().substr(0, 15);
-        dc.DrawText(name, 5, ty + 5);
+        dc.DrawText(name, 30, ty + 5);
 
-        // Instrument Info
-        wxFont normal_font(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-        dc.SetFont(normal_font);
-        dc.SetTextForeground(wxColour(200, 200, 200));
         Instrument* inst = track_obj.instrument();
-        if (inst) {
-            wxString inst_name = inst->name().substr(0, 20);
-            dc.DrawText(inst_name, 5, ty + 20);
-            const char* type_str = "";
-            switch(inst->type()) {
-                case InstrumentType::Sampler: type_str = "[Sampler]"; break;
-                case InstrumentType::SoundFont: type_str = "[SoundFont]"; break;
-                case InstrumentType::Plugin: type_str = "[Plugin]"; break;
-                case InstrumentType::Midi: type_str = "[MIDI]"; break;
-                default: type_str = "[None]"; break;
+
+        // Instrument Info (only shown when not minimized)
+        if (!track_obj.is_minimized()) {
+            wxFont normal_font(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+            dc.SetFont(normal_font);
+            dc.SetTextForeground(wxColour(200, 200, 200));
+            if (inst) {
+                wxString inst_name = inst->name().substr(0, 20);
+                dc.DrawText(inst_name, 30, ty + 20);
+                const char* type_str = "";
+                switch(inst->type()) {
+                    case InstrumentType::Sampler: type_str = "[Sampler]"; break;
+                    case InstrumentType::SoundFont: type_str = "[SoundFont]"; break;
+                    case InstrumentType::Plugin: type_str = "[Plugin]"; break;
+                    case InstrumentType::Midi: type_str = "[MIDI]"; break;
+                    default: type_str = "[None]"; break;
+                }
+                dc.DrawText(type_str, 30, ty + 35);
             }
-            dc.DrawText(type_str, 5, ty + 35);
         }
 
-        // Track Content Area
-        int rows_done = 0;
-        for (auto pat_idx : order) {
-            auto& pat = m_engine.pattern(pat_idx);
-            int pat_rows = (int)pat.row_count();
-            int px = header_w + tick_to_x(rows_done);
+        // Track Content Area (only shown when not minimized)
+        if (!track_obj.is_minimized()) {
+            int rows_done = 0;
+            for (auto pat_idx : order) {
+                auto& pat = m_engine.pattern(pat_idx);
+                int pat_rows = (int)pat.row_count();
+                int px = header_w + tick_to_x(rows_done);
 
-            size_t num_cols = pat.column_count(t);
-            for (int r = 0; r < pat_rows; ++r) {
-                for (size_t c = 0; c < num_cols; ++c) {
-                    const auto& ev = pat.event(t, r, c);
-                    if (ev.note != 255) {
-                        int nx = px + tick_to_x(r);
+                size_t num_cols = pat.column_count(t);
+                for (int r = 0; r < pat_rows; ++r) {
+                    for (size_t c = 0; c < num_cols; ++c) {
+                        const auto& ev = pat.event(t, r, c);
+                        if (ev.note != 255) {
+                            int nx = px + tick_to_x(r);
 
-                        if (ev.note == 254) { // Note Off
-                            dc.SetPen(wxPen(wxColour(255, 100, 100)));
-                            dc.DrawLine(nx, ty + 5, nx, ty + track_h - 5);
-                        } else {
-                            // Find note length
-                            int note_len = 1;
-                            bool found_end = false;
-                            for (int r2 = r + 1; r2 < pat_rows; ++r2) {
-                                if (pat.event(t, r2, c).note != 255) {
-                                    note_len = r2 - r;
-                                    found_end = true;
-                                    break;
-                                }
-                            }
-                            if (!found_end) note_len = pat_rows - r;
-
-                            int nw = tick_to_x(note_len);
-                            if (nw < 2) nw = 2;
-
-                            if (inst && inst->type() == InstrumentType::Sampler) {
-                                SampleInstrument* sampler = static_cast<SampleInstrument*>(inst);
-                                size_t s_idx = (ev.sample_idx > 0) ? (ev.sample_idx - 1) : sampler->selected_sample();
-                                if (s_idx < sampler->sample_count()) {
-                                    auto& sample = sampler->get_sample(s_idx);
-                                    if (sample.data) {
-                                        // Draw sample background
-                                        dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_lpb_highlight)));
-                                        dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_lpb_highlight)));
-                                        dc.DrawRectangle(nx, ty + 5, nw, track_h - 10);
-                                        // Draw waveform
-                                        draw_waveform_helper(dc, nx, ty + 5, nw, track_h - 10, *sample.data, ThemeManager::toWxColour(m_engine.m_tracker_note));
+                            if (ev.note == 254) { // Note Off
+                                dc.SetPen(wxPen(wxColour(255, 100, 100)));
+                                dc.DrawLine(nx, ty + 5, nx, ty + track_h_actual - 5);
+                            } else {
+                                // Find note length
+                                int note_len = 1;
+                                bool found_end = false;
+                                for (int r2 = r + 1; r2 < pat_rows; ++r2) {
+                                    if (pat.event(t, r2, c).note != 255) {
+                                        note_len = r2 - r;
+                                        found_end = true;
+                                        break;
                                     }
                                 }
-                            } else {
-                                // Just a block
-                                dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_note)));
-                                dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_note)));
-                                dc.DrawRectangle(nx, ty + 5, nw, track_h - 10);
-                                
-                                dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
-                                wxFont note_font(8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-                                dc.SetFont(note_font);
-                                const char* notes[] = {"C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"};
-                                wxString nbuf;
-                                nbuf.Printf("%s%d", notes[ev.note % 12], ev.note / 12);
-                                if (nw > 20) dc.DrawText(nbuf, nx + 2, ty + 15);
+                                if (!found_end) note_len = pat_rows - r;
+
+                                int nw = tick_to_x(note_len);
+                                if (nw < 2) nw = 2;
+
+                                if (inst && inst->type() == InstrumentType::Sampler) {
+                                    SampleInstrument* sampler = static_cast<SampleInstrument*>(inst);
+                                    size_t s_idx = (ev.sample_idx > 0) ? (ev.sample_idx - 1) : sampler->selected_sample();
+                                    if (s_idx < sampler->sample_count()) {
+                                        auto& sample = sampler->get_sample(s_idx);
+                                        if (sample.data) {
+                                            // Draw sample background
+                                            dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_lpb_highlight)));
+                                            dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_lpb_highlight)));
+                                            dc.DrawRectangle(nx, ty + 5, nw, track_h_actual - 10);
+                                            // Draw waveform
+                                            draw_waveform_helper(dc, nx, ty + 5, nw, track_h_actual - 10, *sample.data, ThemeManager::toWxColour(m_engine.m_tracker_note));
+                                        }
+                                    }
+                                } else {
+                                    // Just a block
+                                    dc.SetBrush(wxBrush(ThemeManager::toWxColour(m_engine.m_tracker_note)));
+                                    dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_note)));
+                                    dc.DrawRectangle(nx, ty + 5, nw, track_h_actual - 10);
+                                    
+                                    dc.SetTextForeground(ThemeManager::toWxColour(m_engine.m_tracker_bg));
+                                    wxFont note_font(8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+                                    dc.SetFont(note_font);
+                                    const char* notes[] = {"C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"};
+                                    wxString nbuf;
+                                    nbuf.Printf("%s%d", notes[ev.note % 12], ev.note / 12);
+                                    if (nw > 20) dc.DrawText(nbuf, nx + 2, ty + 15);
+                                }
                             }
                         }
                     }
                 }
+                rows_done += pat_rows;
             }
-            rows_done += pat_rows;
         }
 
         // Horizontal line between tracks
         dc.SetPen(wxPen(ThemeManager::toWxColour(m_engine.m_tracker_lpb_highlight)));
-        dc.DrawLine(header_w, ty + track_h - 1, header_w + tick_to_x(total_rows), ty + track_h - 1);
+        dc.DrawLine(header_w, ty + track_h_actual - 1, header_w + tick_to_x(total_rows), ty + track_h_actual - 1);
     }
 
     // Current Playback Marker
@@ -385,6 +427,31 @@ void TracksView::OnMouseDown(wxMouseEvent& event) {
     int x, y;
     CalcUnscrolledPosition(event.GetX(), event.GetY(), &x, &y);
     int header_w = 120;
+    
+    // Check for minimize button clicks (in header area)
+    if (x < header_w) {
+        // Calculate which track was clicked
+        int num_tracks = (int)m_engine.track_count();
+        int cur_y = 30;
+        for (int t = 0; t < num_tracks; ++t) {
+            auto& track_obj = m_engine.track(t);
+            int track_h = track_obj.is_minimized() ? 20 : 80;
+            int ty = cur_y;
+            
+            if (y >= ty && y < ty + track_h) {
+                // Check if minimize button was clicked (5-25 pixels from left)
+                if (x >= 5 && x <= 25) {
+                    toggle_track_minimize(t);
+                    return;
+                }
+                break;
+            }
+            cur_y += track_h;
+        }
+        return;
+    }
+    
+    // Track content selection
     if (x > header_w) {
         m_is_selecting = true;
         m_sel_start_tick = x_to_tick(x - header_w);
@@ -443,8 +510,13 @@ void TracksView::view_selection() {
 }
 
 void TracksView::update_view() {
+    int num_tracks = (int)m_engine.track_count();
+    int total_h = 30;
+    for (int t = 0; t < num_tracks; ++t) {
+        total_h += get_track_height(t);
+    }
     int total_w = 120 + tick_to_x(get_total_ticks()) + 50;
-    int total_h = 30 + (int)m_engine.track_count() * 80 + 50;
+    total_h += 50;
     SetVirtualSize(total_w, total_h);
     Refresh();
 }

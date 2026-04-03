@@ -170,6 +170,7 @@ namespace disgrace_ns
             jt["muted"] = engine.track(t).muted();
             jt["solo"] = engine.track(t).solo();
             jt["notation"] = (int)engine.track(t).notation();
+            jt["minimized"] = engine.track(t).is_minimized();
             
             int in_l, in_r;
             engine.track(t).get_audio_input(in_l, in_r);
@@ -352,6 +353,7 @@ namespace disgrace_ns
                 track.set_mute(jt.value("muted", false));
                 track.set_solo(jt.value("solo", false));
                 track.set_notation((NotationType)jt.value("notation", 0));
+                track.set_minimized(jt.value("minimized", false));
                 track.set_audio_input(jt.value("audio_input_l", -1), jt.value("audio_input_r", -1));
                 track.set_input_delay(jt.value("input_delay_ms", 0.0f), engine.sample_rate());
 
