@@ -126,6 +126,17 @@ namespace disgrace_ns
             } else if (inst.type() == InstrumentType::Voice) {
                 const auto& voice = static_cast<const VoiceInstrument&>(inst);
                 jinst["tts_mode"] = (int)voice.tts_mode();
+                // Store voice texts for each column
+                json jvoice_texts = json::object();
+                for (size_t i = 0; i < 16; ++i) {
+                    std::string text = voice.get_text(i);
+                    if (!text.empty()) {
+                        jvoice_texts[std::to_string(i)] = text;
+                    }
+                }
+                if (!jvoice_texts.empty()) {
+                    jinst["voice_texts"] = jvoice_texts;
+                }
             } else if (inst.type() == InstrumentType::Plugin) {
                 try {
                     const auto& dssi = static_cast<const DSSIInstrument&>(inst);
@@ -272,6 +283,16 @@ namespace disgrace_ns
                 } else if (type == InstrumentType::Voice) {
                     VoiceInstrument& voice = static_cast<VoiceInstrument&>(inst);
                     voice.set_tts_mode((TTSMode)ji.value("tts_mode", 0));
+                    // Load voice texts
+                    if (ji.contains("voice_texts")) {
+                        auto& jvoice_texts = ji["voice_texts"];
+                        for (auto& [key, val] : jvoice_texts.items()) {
+                            size_t col_idx = std::stoul(key);
+                            if (col_idx < 16) {
+                                voice.set_text(val.get<std::string>(), col_idx);
+                            }
+                        }
+                    }
                 } else if (type == InstrumentType::Plugin && (ji.contains("plugin_path") || ji.contains("plugin_name"))) {
                     DSSIInstrument& dssi = static_cast<DSSIInstrument&>(inst);
                     std::string path = ji.value("plugin_path", "");
