@@ -223,13 +223,24 @@ void ProjectPanel::update_track_list() {
         wxChoice* out_ch = new wxChoice(m_track_container, wxID_ANY);
         out_ch->Append("Master");
         for (size_t j = 1; j < num_buses; ++j) {
-            wxString b_name;
-            b_name.Printf("Bus %zu", j);
+            wxString b_name = m_engine.bus(j).name();
             out_ch->Append(b_name);
         }
-        out_ch->Select(track_obj.output_bus() + 1);
+        
+        int current_out = track_obj.output_bus();
+        if (current_out == MixerBus::ROUTE_MASTER) {
+            out_ch->Select(0);
+        } else if (current_out >= 0 && (size_t)current_out < num_buses) {
+            out_ch->Select(current_out + 1);
+        }
+        
         out_ch->Bind(wxEVT_CHOICE, [this, i, out_ch](wxCommandEvent&) {
-            m_engine.track(i).set_output_bus(out_ch->GetSelection() - 1);
+            int sel = out_ch->GetSelection();
+            if (sel == 0) {
+                m_engine.track(i).set_output_bus(MixerBus::ROUTE_MASTER);
+            } else {
+                m_engine.track(i).set_output_bus(sel - 1);
+            }
         });
         grid_sizer->Add(out_ch, 0, wxEXPAND | wxALL, 2);
 
@@ -272,10 +283,58 @@ void ProjectPanel::update_track_list() {
         });
         grid_sizer->Add(name_in, 1, wxEXPAND | wxALL, 2);
 
-        // Column 2, 3, 4: Spacers
+        // Column 2, 3: Spacers
         grid_sizer->AddSpacer(10);
         grid_sizer->AddSpacer(10);
-        grid_sizer->AddSpacer(10);
+
+        // Column 4: Output Choice (Hierarchical Buses + Hardware)
+        wxChoice* out_ch = new wxChoice(m_track_container, wxID_ANY);
+        std::vector<int> bus_outputs;
+        
+        // 1. Master Bus
+        out_ch->Append("Master Bus");
+        bus_outputs.push_back(MixerBus::ROUTE_MASTER);
+        
+        // 2. Hierarchical Buses (only those with index < current bus to avoid loops)
+        for (size_t j = 1; j < i; ++j) {
+            out_ch->Append("Bus: " + m_engine.bus(j).name());
+            bus_outputs.push_back((int)j);
+        }
+        
+        // 3. Hardware Stereo Pairs
+        uint32_t num_outs = m_engine.m_num_outs;
+        for (uint32_t j = 0; j < num_outs; j += 2) {
+            if (j + 1 < num_outs) {
+                out_ch->Append(wxString::Format("Hardware: Out %u/%u", j+1, j+2));
+                bus_outputs.push_back(MixerBus::ROUTE_HW_STEREO_BASE - (int)(j/2));
+            } else {
+                out_ch->Append(wxString::Format("Hardware: Out %u", j+1));
+                bus_outputs.push_back(MixerBus::ROUTE_HW_MONO_BASE - (int)j);
+            }
+        }
+        
+        // 4. Hardware Mono Outputs
+        for (uint32_t j = 0; j < num_outs; ++j) {
+            out_ch->Append(wxString::Format("Hardware: Mono Out %u", j+1));
+            bus_outputs.push_back(MixerBus::ROUTE_HW_MONO_BASE - (int)j);
+        }
+
+        // Set current selection
+        int current_out = bus_obj.output_bus();
+        for (size_t k = 0; k < bus_outputs.size(); ++k) {
+            if (bus_outputs[k] == current_out) {
+                out_ch->Select((int)k);
+                break;
+            }
+        }
+        
+        out_ch->Bind(wxEVT_CHOICE, [this, i, out_ch, bus_outputs](wxCommandEvent&) {
+            int sel = out_ch->GetSelection();
+            if (sel >= 0 && sel < (int)bus_outputs.size()) {
+                m_engine.bus(i).set_output_bus(bus_outputs[sel]);
+            }
+        });
+        grid_sizer->Add(out_ch, 0, wxEXPAND | wxALL, 2);
 
         // Column 5, 6, 7: Control Buttons
         auto create_small_btn = [&](const wxArtID& art, const wxString& backup_label, auto func) {

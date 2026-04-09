@@ -365,7 +365,7 @@ void Engine::handle_effect_row_start(size_t t, const TrackEvent& ev)
     process_fx(ev.effect2, ev.param2);
 }
 
-void Engine::process_audio(const float* const* in_bufs, uint32_t num_ins, float* out_l, float* out_r, size_t nframes)
+void Engine::process_audio(const float* const* in_bufs, uint32_t num_ins, float** out_bufs, uint32_t num_outs, size_t nframes)
 {
     MidiMessage msg;
     while (m_midi_queue.pop(msg)) {
@@ -379,26 +379,66 @@ void Engine::process_audio(const float* const* in_bufs, uint32_t num_ins, float*
     process_commands();
 
     if (!transport().is_playing()) {
-        render_block(out_l, out_r, nframes, in_bufs);
+        render_block_multi(out_bufs, num_outs, nframes, in_bufs);
     } else {
-        process_block(out_l, out_r, nframes, in_bufs);
+        // We still use process_block which calls render_block internally
+        // for now we'll handle multi-out in render_block_multi
+        // process_block needs to be aware of multi-out or we can just call it with a wrapped buffer
+        size_t processed = 0;
+        while (processed < nframes) {
+            if (m_samples_until_next_tick == 0) {
+                process_tick();
+                m_samples_until_next_tick = m_timing.samples_per_tick();
+            }
+            size_t block = std::min(m_samples_until_next_tick, nframes - processed);
+            
+            const float* offset_in_bufs[64];
+            for(uint32_t i = 0; i < m_num_ins && i < 64; ++i) {
+                offset_in_bufs[i] = in_bufs ? in_bufs[i] + processed : nullptr;
+            }
+
+            float* offset_out_bufs[64];
+            for(uint32_t i = 0; i < num_outs && i < 64; ++i) {
+                offset_out_bufs[i] = out_bufs[i] + processed;
+            }
+
+            render_block_multi(offset_out_bufs, num_outs, block, in_bufs ? offset_in_bufs : nullptr);
+            processed += block; m_samples_until_next_tick -= block;
+        }
     }
 
-    m_master.process(out_l, out_r, nframes);
+    // Master bus processing on hardware outputs 1-2 (out_bufs[0] and out_bufs[1])
+    if (num_outs >= 2 && out_bufs[0] && out_bufs[1]) {
+        m_master.process(out_bufs[0], out_bufs[1], nframes);
+    }
 
     if (m_is_exporting.load()) {
-        for (size_t i = 0; i < nframes; ++i) { out_l[i] = 0.f; out_r[i] = 0.f; }
+        for (uint32_t j = 0; j < num_outs; ++j) {
+            if (out_bufs[j]) {
+                for (size_t i = 0; i < nframes; ++i) { out_bufs[j][i] = 0.f; }
+            }
+        }
     }
 
-    for (size_t i = 0; i < nframes; ++i) m_spectral_rb.push((out_l[i] + out_r[i]) * 0.5f);
+    if (num_outs >= 2 && out_bufs[0] && out_bufs[1]) {
+        for (size_t i = 0; i < nframes; ++i) m_spectral_rb.push((out_bufs[0][i] + out_bufs[1][i]) * 0.5f);
+    }
 
     if (m_metronome_enabled && transport().state() != TransportState::Stopped && !m_is_exporting.load()) {
-        float met_l[MAX_BLOCK], met_r[MAX_BLOCK];
-        size_t block = std::min(nframes, MAX_BLOCK);
-        for(size_t i=0; i<block; ++i) { met_l[i] = 0.f; met_r[i] = 0.f; }
-        m_metronome.process(met_l, met_r, block, m_samples_until_next_beat, m_timing.samples_per_beat());
-        for(size_t i=0; i<block; ++i) { out_l[i] += met_l[i]; out_r[i] += met_r[i]; }
+        if (num_outs >= 2 && out_bufs[0] && out_bufs[1]) {
+            float met_l[MAX_BLOCK], met_r[MAX_BLOCK];
+            size_t block = std::min(nframes, MAX_BLOCK);
+            for(size_t i=0; i<block; ++i) { met_l[i] = 0.f; met_r[i] = 0.f; }
+            m_metronome.process(met_l, met_r, block, m_samples_until_next_beat, m_timing.samples_per_beat());
+            for(size_t i=0; i<block; ++i) { out_bufs[0][i] += met_l[i]; out_bufs[1][i] += met_r[i]; }
+        }
     }
+}
+
+void Engine::process_audio(const float* const* in_bufs, uint32_t num_ins, float* out_l, float* out_r, size_t nframes)
+{
+    float* out_bufs[2] = { out_l, out_r };
+    process_audio(in_bufs, num_ins, out_bufs, 2, nframes);
 }
 
 void Engine::process_block(float* l, float* r, size_t nframes, const float* const* in_bufs) {
@@ -421,7 +461,7 @@ void Engine::process_block(float* l, float* r, size_t nframes, const float* cons
     m_master.process(l, r, nframes);
 }
 
-void Engine::render_block(float* out_l, float* out_r, size_t frames, const float* const* in_bufs) {
+void Engine::render_block_multi(float** out_bufs, uint32_t num_outs, size_t frames, const float* const* in_bufs) {
     if (m_is_recording_sample.load()) {
         bool should_record = false;
         if (m_recording_sample_mode.load() == SampleRecordMode::Free) {
@@ -459,8 +499,12 @@ void Engine::render_block(float* out_l, float* out_r, size_t frames, const float
         }
     }
 
-    for (size_t i = 0; i < frames; ++i) { out_l[i] = 0.f; out_r[i] = 0.f; }
+    // Initialize hardware outputs
+    for (uint32_t j = 0; j < num_outs; ++j) {
+        if (out_bufs[j]) std::fill(out_bufs[j], out_bufs[j] + frames, 0.f);
+    }
     
+    // Initialize bus buffers
     for (size_t b = 0; b < m_buses.size() && b < MAX_BUSES_INTERNAL; ++b) {
         std::fill(m_bus_l[b], m_bus_l[b] + frames, 0.f);
         std::fill(m_bus_r[b], m_bus_r[b] + frames, 0.f);
@@ -471,6 +515,7 @@ void Engine::render_block(float* out_l, float* out_r, size_t frames, const float
         if (m_tracks[t].solo()) { any_solo = true; break; }
     }
 
+    // Pass 1: Tracks to Buses
     for (size_t t = 0; t < m_tracks.size(); ++t) {
         m_tracks[t].process(m_track_l[t], m_track_r[t], frames, in_bufs);
         
@@ -488,24 +533,88 @@ void Engine::render_block(float* out_l, float* out_r, size_t frames, const float
                     m_bus_l[out_idx][i] += m_track_l[t][i];
                     m_bus_r[out_idx][i] += m_track_r[t][i];
                 }
-            } else {
-                for (size_t i = 0; i < frames; ++i) {
-                    out_l[i] += m_track_l[t][i];
-                    out_r[i] += m_track_r[t][i];
+            } else if (out_idx == MixerBus::ROUTE_MASTER) {
+                // To Master output (Hardware 1-2)
+                if (num_outs >= 2 && out_bufs[0] && out_bufs[1]) {
+                    for (size_t i = 0; i < frames; ++i) {
+                        out_bufs[0][i] += m_track_l[t][i];
+                        out_bufs[1][i] += m_track_r[t][i];
+                    }
+                }
+            } else if (out_idx <= MixerBus::ROUTE_HW_STEREO_BASE && out_idx > MixerBus::ROUTE_HW_MONO_BASE) {
+                int pair = MixerBus::ROUTE_HW_STEREO_BASE - out_idx;
+                uint32_t ch_l = pair * 2;
+                uint32_t ch_r = pair * 2 + 1;
+                if (ch_r < num_outs && out_bufs[ch_l] && out_bufs[ch_r]) {
+                    for (size_t i = 0; i < frames; ++i) {
+                        out_bufs[ch_l][i] += m_track_l[t][i];
+                        out_bufs[ch_r][i] += m_track_r[t][i];
+                    }
+                }
+            } else if (out_idx <= MixerBus::ROUTE_HW_MONO_BASE) {
+                uint32_t ch = MixerBus::ROUTE_HW_MONO_BASE - out_idx;
+                if (ch < num_outs && out_bufs[ch]) {
+                    for (size_t i = 0; i < frames; ++i) {
+                        out_bufs[ch][i] += (m_track_l[t][i] + m_track_r[t][i]) * 0.5f;
+                    }
                 }
             }
         }
     }
 
-    for (size_t b = 0; b < m_buses.size() && b < MAX_BUSES_INTERNAL; ++b) {
+    // Pass 2: Buses to other Buses or Hardware
+    // We process buses in reverse order to allow simple hierarchical routing (higher index buses to lower index buses)
+    // Bus 0 is Master Bus, but it's used as a regular bus in this loop if needed.
+    for (int b = (int)m_buses.size() - 1; b >= 0; --b) {
         m_buses[b].process(m_bus_l[b], m_bus_r[b], frames);
         
-        // All buses route to master output
-        for (size_t i = 0; i < frames; ++i) {
-            out_l[i] += m_bus_l[b][i];
-            out_r[i] += m_bus_r[b][i];
+        int out_idx = m_buses[b].output_bus();
+        if (out_idx >= 0 && out_idx < b && out_idx < MAX_BUSES_INTERNAL) {
+            // Route to a lower-indexed bus
+            for (size_t i = 0; i < frames; ++i) {
+                m_bus_l[out_idx][i] += m_bus_l[b][i];
+                m_bus_r[out_idx][i] += m_bus_r[b][i];
+            }
+        } else if (out_idx == MixerBus::ROUTE_MASTER) {
+            // Route to Master output (Hardware 1-2)
+            if (num_outs >= 2 && out_bufs[0] && out_bufs[1]) {
+                for (size_t i = 0; i < frames; ++i) {
+                    out_bufs[0][i] += m_bus_l[b][i];
+                    out_bufs[1][i] += m_bus_r[b][i];
+                }
+            }
+        } else if (out_idx <= MixerBus::ROUTE_HW_STEREO_BASE && out_idx > MixerBus::ROUTE_HW_MONO_BASE) {
+            int pair = MixerBus::ROUTE_HW_STEREO_BASE - out_idx;
+            uint32_t ch_l = pair * 2;
+            uint32_t ch_r = pair * 2 + 1;
+            if (ch_r < num_outs && out_bufs[ch_l] && out_bufs[ch_r]) {
+                for (size_t i = 0; i < frames; ++i) {
+                    out_bufs[ch_l][i] += m_bus_l[b][i];
+                    out_bufs[ch_r][i] += m_bus_r[b][i];
+                }
+            }
+        } else if (out_idx <= MixerBus::ROUTE_HW_MONO_BASE) {
+            uint32_t ch = MixerBus::ROUTE_HW_MONO_BASE - out_idx;
+            if (ch < num_outs && out_bufs[ch]) {
+                for (size_t i = 0; i < frames; ++i) {
+                    out_bufs[ch][i] += (m_bus_l[b][i] + m_bus_r[b][i]) * 0.5f;
+                }
+            }
+        } else if (out_idx >= b) {
+            // Potential feedback loop, route to master instead or just drop
+            if (num_outs >= 2 && out_bufs[0] && out_bufs[1]) {
+                for (size_t i = 0; i < frames; ++i) {
+                    out_bufs[0][i] += m_bus_l[b][i];
+                    out_bufs[1][i] += m_bus_r[b][i];
+                }
+            }
         }
     }
+}
+
+void Engine::render_block(float* out_l, float* out_r, size_t frames, const float* const* in_bufs) {
+    float* out_bufs[2] = { out_l, out_r };
+    render_block_multi(out_bufs, 2, frames, in_bufs);
 }
 
 void Engine::handle_midi(uint8_t* data, size_t size) {

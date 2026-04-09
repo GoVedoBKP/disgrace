@@ -176,8 +176,8 @@ int JackBackend::process(jack_nframes_t nframes)
         }
     }
 
-    if (out_bufs.size() >= 2 && out_bufs[0] && out_bufs[1]) {
-        m_engine->process_audio(in_bufs.data(), (uint32_t)in_bufs.size(), out_bufs[0], out_bufs[1], nframes);
+    if (out_bufs.size() >= 2) {
+        m_engine->process_audio(in_bufs.data(), (uint32_t)in_bufs.size(), out_bufs.data(), (uint32_t)out_bufs.size(), nframes);
     }
 
     return 0;

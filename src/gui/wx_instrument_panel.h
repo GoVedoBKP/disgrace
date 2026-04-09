@@ -32,6 +32,7 @@
 #include <wx/sizer.h>
 #include <wx/stattext.h>
 #include <wx/filedlg.h>
+#include <wx/splitter.h>
 #include <map>
 
 namespace disgrace_ns {
@@ -67,8 +68,13 @@ private:
 
     void on_inst_select_idx(int idx);
 
+    wxSplitterWindow* m_main_splitter;
+    wxSplitterWindow* m_left_splitter;
+
     wxPanel* m_left_panel;
     wxPanel* m_right_panel;
+    wxPanel* m_inst_list_pane;
+    wxPanel* m_file_browser_pane;
 
     wxButton* m_new_btn;
     wxButton* m_load_btn;

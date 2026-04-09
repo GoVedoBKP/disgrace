@@ -92,6 +92,7 @@ public:
     disgrace_ns::Transport& transport();
     const disgrace_ns::Transport& transport() const;
 
+    void process_audio(const float* const* in_bufs, uint32_t num_ins, float** out_bufs, uint32_t num_outs, size_t nframes);
     void process_audio(const float* const* in_bufs, uint32_t num_ins, float* out_l, float* out_r, size_t nframes);
 
     double tempo() const;
@@ -325,6 +326,7 @@ private:
     void reset_transport_to_start();
     size_t max_track_latency() const;
     void process_tick();
+    void render_block_multi(float** out_bufs, uint32_t num_outs, size_t frames, const float* const* in_bufs = nullptr);
     void render_block(float* out_l, float* out_r, size_t frames, const float* const* in_bufs = nullptr);
     inline float soft_clip(float x);
     void handle_effect(const disgrace_ns::TrackEvent& ev);

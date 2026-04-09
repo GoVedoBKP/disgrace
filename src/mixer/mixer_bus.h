@@ -51,7 +51,15 @@ public:
     float meter_l() const;
     float meter_r() const;
 
-    // Routing: -1 = Master, 0+ = Index of another MixerBus
+    // Routing: 
+    // -1 = Master (default)
+    // 0+ = Index of another MixerBus
+    // -2 and below = Hardware Output Pairs ( -2=Out 1-2, -3=Out 3-4, etc. )
+    // -100 and below = Hardware Output Mono ( -100=Out 1, -101=Out 2, etc. )
+    static const int ROUTE_MASTER = -1;
+    static const int ROUTE_HW_STEREO_BASE = -2;
+    static const int ROUTE_HW_MONO_BASE = -100;
+
     void set_output_bus(int bus_idx);
     int output_bus() const;
 

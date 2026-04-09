@@ -47,56 +47,77 @@ namespace disgrace_ns {
 InstrumentPanel::InstrumentPanel(wxWindow* parent, Engine& engine)
     : wxPanel(parent, wxID_ANY), m_engine(engine)
 {
-    wxBoxSizer* main_sizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* main_sizer = new wxBoxSizer(wxVERTICAL);
 
-    // --- Left Panel: Instrument List ---
-    m_left_panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(320, -1));
+    m_main_splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_LIVE_UPDATE | wxSP_3D);
+    m_main_splitter->SetMinimumPaneSize(200);
+
+    // --- Left Side: Instrument List and Browser ---
+    m_left_panel = new wxPanel(m_main_splitter, wxID_ANY);
     wxBoxSizer* left_sizer = new wxBoxSizer(wxVERTICAL);
 
+    m_left_splitter = new wxSplitterWindow(m_left_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_LIVE_UPDATE | wxSP_3D);
+    m_left_splitter->SetMinimumPaneSize(100);
+
+    // 1. Instrument List Pane
+    m_inst_list_pane = new wxPanel(m_left_splitter, wxID_ANY);
+    wxBoxSizer* inst_list_sizer = new wxBoxSizer(wxVERTICAL);
+
     wxBoxSizer* top_btn_sizer = new wxBoxSizer(wxHORIZONTAL);
-    m_detach_btn = new wxButton(m_left_panel, wxID_ANY, "[]", wxDefaultPosition, wxSize(30, 20));
+    m_detach_btn = new wxButton(m_inst_list_pane, wxID_ANY, "[]", wxDefaultPosition, wxSize(30, 20));
     m_detach_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_detach, this);
-    top_btn_sizer->Add(new wxStaticText(m_left_panel, wxID_ANY, "Instruments"), 1, wxALL, 2);
+    top_btn_sizer->Add(new wxStaticText(m_inst_list_pane, wxID_ANY, "Instruments"), 1, wxALL | wxALIGN_CENTER_VERTICAL, 2);
     top_btn_sizer->Add(m_detach_btn, 0, wxALL, 2);
-    left_sizer->Add(top_btn_sizer, 0, wxEXPAND | wxALL, 2);
+    inst_list_sizer->Add(top_btn_sizer, 0, wxEXPAND | wxALL, 2);
 
     wxBoxSizer* btn_sizer = new wxBoxSizer(wxHORIZONTAL);
-    m_new_btn = new wxButton(m_left_panel, wxID_ANY, "New", wxDefaultPosition, wxSize(-1, 25));
+    m_new_btn = new wxButton(m_inst_list_pane, wxID_ANY, "New", wxDefaultPosition, wxSize(-1, 25));
     m_new_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_NEW, wxART_BUTTON, wxSize(16, 16)));
     m_new_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_new, this);
     
-    m_load_btn = new wxButton(m_left_panel, wxID_ANY, "Load", wxDefaultPosition, wxSize(-1, 25));
+    m_load_btn = new wxButton(m_inst_list_pane, wxID_ANY, "Load", wxDefaultPosition, wxSize(-1, 25));
     m_load_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_FILE_OPEN, wxART_BUTTON, wxSize(16, 16)));
     m_load_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_load, this);
     
-    m_save_btn = new wxButton(m_left_panel, wxID_ANY, "Save", wxDefaultPosition, wxSize(-1, 25));
+    m_save_btn = new wxButton(m_inst_list_pane, wxID_ANY, "Save", wxDefaultPosition, wxSize(-1, 25));
     m_save_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_FILE_SAVE, wxART_BUTTON, wxSize(16, 16)));
     m_save_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_save, this);
     
-    m_delete_btn = new wxButton(m_left_panel, wxID_ANY, "Del", wxDefaultPosition, wxSize(-1, 25));
+    m_delete_btn = new wxButton(m_inst_list_pane, wxID_ANY, "Del", wxDefaultPosition, wxSize(-1, 25));
     m_delete_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_DELETE, wxART_BUTTON, wxSize(16, 16)));
     m_delete_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_delete, this);
     
-    btn_sizer->Add(m_new_btn, 0, wxALL, 2);
-    btn_sizer->Add(m_load_btn, 0, wxALL, 2);
-    btn_sizer->Add(m_save_btn, 0, wxALL, 2);
-    btn_sizer->Add(m_delete_btn, 0, wxALL, 2);
-    left_sizer->Add(btn_sizer, 0, wxEXPAND | wxALL, 2);
+    btn_sizer->Add(m_new_btn, 1, wxALL, 1);
+    btn_sizer->Add(m_load_btn, 1, wxALL, 1);
+    btn_sizer->Add(m_save_btn, 1, wxALL, 1);
+    btn_sizer->Add(m_delete_btn, 1, wxALL, 1);
+    inst_list_sizer->Add(btn_sizer, 0, wxEXPAND | wxALL, 2);
 
-    m_inst_scroll = new wxScrolledWindow(m_left_panel, wxID_ANY, wxDefaultPosition, wxSize(-1, 200), wxVSCROLL);
+    m_inst_scroll = new wxScrolledWindow(m_inst_list_pane, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL);
     m_inst_scroll->SetScrollRate(0, 20);
     m_inst_scroll->SetSizer(new wxBoxSizer(wxVERTICAL));
-    left_sizer->Add(m_inst_scroll, 0, wxEXPAND | wxALL, 2);
+    inst_list_sizer->Add(m_inst_scroll, 1, wxEXPAND | wxALL, 2);
+    m_inst_list_pane->SetSizer(inst_list_sizer);
 
-    m_file_browser = new wxFileCtrl(m_left_panel, wxID_ANY, wxEmptyString, wxEmptyString, wxEmptyString, wxFC_DEFAULT_STYLE, wxDefaultPosition, wxSize(-1, -1));
-    left_sizer->Add(m_file_browser, 1, wxEXPAND | wxALL, 2);
+    // 2. File Browser Pane
+    m_file_browser_pane = new wxPanel(m_left_splitter, wxID_ANY);
+    wxBoxSizer* file_browser_sizer = new wxBoxSizer(wxVERTICAL);
+    file_browser_sizer->Add(new wxStaticText(m_file_browser_pane, wxID_ANY, "File Browser"), 0, wxALL, 2);
+    m_file_browser = new wxFileCtrl(m_file_browser_pane, wxID_ANY, wxEmptyString, wxEmptyString, wxEmptyString, wxFC_DEFAULT_STYLE);
+    file_browser_sizer->Add(m_file_browser, 1, wxEXPAND | wxALL, 2);
+    m_file_browser_pane->SetSizer(file_browser_sizer);
 
+    m_left_splitter->SplitHorizontally(m_inst_list_pane, m_file_browser_pane, 400);
+    left_sizer->Add(m_left_splitter, 1, wxEXPAND);
     m_left_panel->SetSizer(left_sizer);
-    main_sizer->Add(m_left_panel, 0, wxEXPAND | wxALL, 2);
 
     // --- Right Panel: Editors ---
-    m_right_panel = new wxPanel(this, wxID_ANY);
+    m_right_panel = new wxPanel(m_main_splitter, wxID_ANY);
     wxBoxSizer* right_sizer = new wxBoxSizer(wxVERTICAL);
+
+    m_main_splitter->SplitVertically(m_left_panel, m_right_panel, 320);
+    main_sizer->Add(m_main_splitter, 1, wxEXPAND);
+    this->SetSizer(main_sizer);
 
     // 1. Sampler Editor
     m_sampler_editor = new wxPanel(m_right_panel, wxID_ANY);
@@ -175,26 +196,28 @@ InstrumentPanel::InstrumentPanel(wxWindow* parent, Engine& engine)
     top_sampler_sizer->Add(rec_panel, 1, wxEXPAND | wxLEFT, 10);
     sampler_sizer->Add(top_sampler_sizer, 0, wxEXPAND | wxALL, 2);
 
-    // Processing Controls - Row 1: Volume
+    // Processing Controls - Using a FlexGridSizer for better alignment
+    wxFlexGridSizer* proc_sizer = new wxFlexGridSizer(3, 2, 5, 5);
+    proc_sizer->AddGrowableCol(1, 1);
+
+    // Row 1: Volume
+    proc_sizer->Add(new wxStaticText(m_sampler_editor, wxID_ANY, "Volume:"), 0, wxALIGN_CENTER_VERTICAL);
     wxBoxSizer* vol_sizer = new wxBoxSizer(wxHORIZONTAL);
     m_norm_btn = new wxButton(m_sampler_editor, wxID_ANY, "Normalize", wxDefaultPosition, wxSize(-1, 25));
     m_norm_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_TICK_MARK, wxART_BUTTON, wxSize(16, 16)));
     m_norm_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_normalize, this);
-    
     m_vol_btn = new wxButton(m_sampler_editor, wxID_ANY, "Gain", wxDefaultPosition, wxSize(-1, 25));
     m_vol_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_PLUS, wxART_BUTTON, wxSize(16, 16)));
     m_vol_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_adjust_vol, this);
-    
     m_vol_input = new wxSpinCtrlDouble(m_sampler_editor, wxID_ANY);
     m_vol_input->SetRange(0.0, 10.0); m_vol_input->SetIncrement(0.1); m_vol_input->SetValue(1.0);
-    
-    vol_sizer->Add(new wxStaticText(m_sampler_editor, wxID_ANY, "Volume:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    vol_sizer->Add(m_norm_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    vol_sizer->Add(m_vol_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    vol_sizer->Add(m_vol_input, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    sampler_sizer->Add(vol_sizer, 0, wxEXPAND | wxALL, 2);
+    vol_sizer->Add(m_norm_btn, 0, wxRIGHT, 2);
+    vol_sizer->Add(m_vol_btn, 0, wxRIGHT, 2);
+    vol_sizer->Add(m_vol_input, 0);
+    proc_sizer->Add(vol_sizer, 0, wxEXPAND);
 
-    // Processing Controls - Row 2: Fades
+    // Row 2: Fades
+    proc_sizer->Add(new wxStaticText(m_sampler_editor, wxID_ANY, "Fades:"), 0, wxALIGN_CENTER_VERTICAL);
     wxBoxSizer* fade_sizer = new wxBoxSizer(wxHORIZONTAL);
     m_fade_in_lin_btn = new wxButton(m_sampler_editor, wxID_ANY, "In Lin", wxDefaultPosition, wxSize(-1, 25));
     m_fade_in_lin_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_fade_in_lin, this);
@@ -204,42 +227,37 @@ InstrumentPanel::InstrumentPanel(wxWindow* parent, Engine& engine)
     m_fade_out_lin_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_fade_out_lin, this);
     m_fade_out_log_btn = new wxButton(m_sampler_editor, wxID_ANY, "Out Log", wxDefaultPosition, wxSize(-1, 25));
     m_fade_out_log_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_fade_out_log, this);
-    
-    fade_sizer->Add(new wxStaticText(m_sampler_editor, wxID_ANY, "Fades:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    fade_sizer->Add(m_fade_in_lin_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    fade_sizer->Add(m_fade_in_log_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    fade_sizer->Add(m_fade_out_lin_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    fade_sizer->Add(m_fade_out_log_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    sampler_sizer->Add(fade_sizer, 0, wxEXPAND | wxALL, 2);
+    fade_sizer->Add(m_fade_in_lin_btn, 0, wxRIGHT, 2);
+    fade_sizer->Add(m_fade_in_log_btn, 0, wxRIGHT, 2);
+    fade_sizer->Add(m_fade_out_lin_btn, 0, wxRIGHT, 2);
+    fade_sizer->Add(m_fade_out_log_btn, 0);
+    proc_sizer->Add(fade_sizer, 0, wxEXPAND);
 
-    // Processing Controls - Row 3: Editing
+    // Row 3: Editing
+    proc_sizer->Add(new wxStaticText(m_sampler_editor, wxID_ANY, "Edit:"), 0, wxALIGN_CENTER_VERTICAL);
     wxBoxSizer* edit_sizer = new wxBoxSizer(wxHORIZONTAL);
     m_silence_btn = new wxButton(m_sampler_editor, wxID_ANY, "Silence", wxDefaultPosition, wxSize(-1, 25));
     m_silence_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_MISSING_IMAGE, wxART_BUTTON, wxSize(16, 16)));
     m_silence_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_silence, this);
-    
     m_ins_sil_btn = new wxButton(m_sampler_editor, wxID_ANY, "Insert Sil", wxDefaultPosition, wxSize(-1, 25));
     m_ins_sil_btn->Bind(wxEVT_BUTTON, &InstrumentPanel::on_insert_silence, this);
-    
     m_cut_btn = new wxButton(m_sampler_editor, wxID_ANY, "Cut", wxDefaultPosition, wxSize(-1, 25));
     m_cut_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_CUT, wxART_BUTTON, wxSize(16, 16)));
     m_cut_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&){ cut(); });
-    
     m_copy_btn = new wxButton(m_sampler_editor, wxID_ANY, "Copy", wxDefaultPosition, wxSize(-1, 25));
     m_copy_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_COPY, wxART_BUTTON, wxSize(16, 16)));
     m_copy_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&){ copy(); });
-    
     m_paste_btn = new wxButton(m_sampler_editor, wxID_ANY, "Paste", wxDefaultPosition, wxSize(-1, 25));
     m_paste_btn->SetBitmap(wxArtProvider::GetBitmap(wxART_PASTE, wxART_BUTTON, wxSize(16, 16)));
     m_paste_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent&){ paste(); });
+    edit_sizer->Add(m_silence_btn, 0, wxRIGHT, 2);
+    edit_sizer->Add(m_ins_sil_btn, 0, wxRIGHT, 2);
+    edit_sizer->Add(m_cut_btn, 0, wxRIGHT, 2);
+    edit_sizer->Add(m_copy_btn, 0, wxRIGHT, 2);
+    edit_sizer->Add(m_paste_btn, 0);
+    proc_sizer->Add(edit_sizer, 0, wxEXPAND);
 
-    edit_sizer->Add(new wxStaticText(m_sampler_editor, wxID_ANY, "Edit:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-    edit_sizer->Add(m_silence_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    edit_sizer->Add(m_ins_sil_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    edit_sizer->Add(m_cut_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    edit_sizer->Add(m_copy_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    edit_sizer->Add(m_paste_btn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 1);
-    sampler_sizer->Add(edit_sizer, 0, wxEXPAND | wxALL, 2);
+    sampler_sizer->Add(proc_sizer, 0, wxEXPAND | wxALL, 5);
 
     // Waveform View
     m_waveform_view = new WaveformView(m_sampler_editor, wxID_ANY, m_engine);
@@ -673,9 +691,6 @@ InstrumentPanel::InstrumentPanel(wxWindow* parent, Engine& engine)
     right_sizer->Add(m_voice_editor, 1, wxEXPAND | wxALL, 2);
 
     m_right_panel->SetSizer(right_sizer);
-    main_sizer->Add(m_right_panel, 1, wxEXPAND | wxALL, 2);
-
-    SetSizer(main_sizer);
 
     update_rec_inputs();
     update_midi_input_choice();

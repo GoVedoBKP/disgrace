@@ -22,7 +22,7 @@
 
 namespace disgrace_ns {
 
-MixerBus::MixerBus() : m_name("Bus") {}
+MixerBus::MixerBus() : m_name("Bus"), m_output_bus(ROUTE_MASTER) {}
 
 MixerBus::MixerBus(MixerBus&& other) noexcept 
     : m_name(std::move(other.m_name)),
