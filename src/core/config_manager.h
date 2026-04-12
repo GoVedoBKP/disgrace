@@ -58,6 +58,10 @@ struct Config {
 
     // Keyboard
     int keyboard_layout = 0; // Auto
+
+    // Threading
+    // 0 = off (single-threaded), 1-N = N worker threads, 255 = auto (hardware_concurrency - 1)
+    uint32_t num_worker_threads = 0;
 };
 
 class ConfigManager {

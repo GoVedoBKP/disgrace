@@ -131,6 +131,42 @@ void SettingsPanel::init_audio_grp(int x, int y, int w, int h) {
     m_reinit_audio_btn->Bind(wxEVT_BUTTON, &SettingsPanel::on_reinit_audio, this);
     sizer->Add(m_reinit_audio_btn, 0, wxALL, 2);
 
+    row = new wxBoxSizer(wxHORIZONTAL);
+    row->Add(new wxStaticText(m_audio_grp, wxID_ANY, "Worker Threads:"), 0, wxALL | wxALIGN_CENTER_VERTICAL, 2);
+    m_worker_threads = new wxChoice(m_audio_grp, wxID_ANY);
+    m_worker_threads->Append("Off (single-threaded)");
+    m_worker_threads->Append("1");
+    m_worker_threads->Append("2");
+    m_worker_threads->Append("3");
+    m_worker_threads->Append("4");
+    m_worker_threads->Append("6");
+    m_worker_threads->Append("8");
+    m_worker_threads->Append("Auto");
+    {
+        uint32_t n = ConfigManager::instance().config().num_worker_threads;
+        int sel = 0;
+        if (n == 255) sel = 7;
+        else if (n == 8) sel = 6;
+        else if (n == 6) sel = 5;
+        else if (n == 4) sel = 4;
+        else if (n == 3) sel = 3;
+        else if (n == 2) sel = 2;
+        else if (n == 1) sel = 1;
+        m_worker_threads->SetSelection(sel);
+    }
+    m_worker_threads->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
+        static const uint32_t thread_vals[] = {0, 1, 2, 3, 4, 6, 8, 255};
+        int sel = m_worker_threads->GetSelection();
+        if (sel >= 0 && sel < 8) {
+            m_engine.set_worker_threads(thread_vals[sel]);
+            ConfigManager::instance().save();
+        }
+    });
+    row->Add(m_worker_threads, 0, wxALL, 2);
+    sizer->Add(row, 0, wxALL, 2);
+    sizer->Add(new wxStaticText(m_audio_grp, wxID_ANY,
+        "Apply while stopped for best results."), 0, wxLEFT, 6);
+
     m_audio_status = new wxStaticText(m_audio_grp, wxID_ANY, "Audio Status: Ready");
     sizer->Add(m_audio_status, 0, wxALL, 2);
 

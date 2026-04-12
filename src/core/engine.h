@@ -38,6 +38,7 @@
 #include "key_bindings.h"
 #include "../gui/theme.h"
 #include "../midi/midi_queue.h"
+#include "audio_thread_pool.h"
 #include "../midi/midi_input.h"
 #include "metronome.h"
 #include "masterbus.h"
@@ -82,6 +83,11 @@ public:
     void reinitialize_audio(uint32_t num_ins = 2, uint32_t num_outs = 2,
                             uint32_t num_midi_ins = 1, uint32_t num_midi_outs = 1);
     bool audio_active() const;
+
+    // Set the number of worker threads for parallel track processing.
+    // 0 = single-threaded (off), 1-N = N workers, 255 = auto (hardware_concurrency - 1).
+    // Safe to call from the GUI thread when the engine is stopped.
+    void set_worker_threads(uint32_t n);
 
     void start();
     void stop();
@@ -349,6 +355,8 @@ private:
 
     ::std::vector<disgrace_ns::Track> m_tracks;
     ::std::vector<disgrace_ns::MixerBus> m_buses;
+
+    ::std::unique_ptr<AudioThreadPool> m_thread_pool;
 
     static constexpr size_t MAX_BLOCK = 2048;
     static constexpr size_t MAX_TRACKS_INTERNAL = 64;

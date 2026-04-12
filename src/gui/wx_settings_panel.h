@@ -30,6 +30,7 @@ private:
 
     wxSpinCtrl* m_audio_ins;
     wxSpinCtrl* m_audio_outs;
+    wxChoice*   m_worker_threads;
     wxButton* m_reinit_audio_btn;
     wxStaticText* m_audio_status;
 

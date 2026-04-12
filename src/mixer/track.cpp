@@ -133,29 +133,21 @@ void disgrace_ns::Track::process(float* out_l,
 
     m_chain.process(out_l, out_r, nframes);
 
-    // apply volume + pan
-    for (size_t i = 0; i < nframes; ++i)
-    {
-        float l = out_l[i];
-        float r = out_r[i];
-
-        float left_gain  = volume() * (pan <= 0 ? 1.0f : 1.0f - pan); // Corrected volume()
-        float right_gain = volume() * (pan >= 0 ? 1.0f : 1.0f + pan); // Corrected volume()
-
-        out_l[i] = l * left_gain;
-        out_r[i] = r * right_gain;
-    }
+    // Apply volume + pan; measure peak in the same pass.
+    const float vol      = volume();
+    const float gain_l   = vol * (pan <= 0.f ? 1.0f : 1.0f - pan);
+    const float gain_r   = vol * (pan >= 0.f ? 1.0f : 1.0f + pan);
 
     float peak_l = 0.f;
     float peak_r = 0.f;
 
-    for (size_t i = 0; i < nframes; ++i)
-    {
-        float vl = ::std::fabs(out_l[i]);
-        if (vl > peak_l) peak_l = vl;
-
-        float vr = ::std::fabs(out_r[i]);
-        if (vr > peak_r) peak_r = vr;
+    for (size_t i = 0; i < nframes; ++i) {
+        out_l[i] *= gain_l;
+        out_r[i] *= gain_r;
+        float al = std::fabs(out_l[i]);
+        float ar = std::fabs(out_r[i]);
+        if (al > peak_l) peak_l = al;
+        if (ar > peak_r) peak_r = ar;
     }
 
     // simple smoothing

@@ -103,6 +103,10 @@ void ConfigManager::read_from(const std::string& path) {
         if (j.contains("keyboard")) {
             m_config.keyboard_layout = j["keyboard"].value("layout", 0);
         }
+
+        if (j.contains("threading")) {
+            m_config.num_worker_threads = j["threading"].value("worker_threads", 0u);
+        }
     } catch (const std::exception& e) {
         std::cerr << "Error loading config from " << path << ": " << e.what() << std::endl;
     }
@@ -140,6 +144,8 @@ void ConfigManager::write_to(const std::string& path) {
         j["tracker"]["effect"] = m_config.tracker_effect;
 
         j["keyboard"]["layout"] = m_config.keyboard_layout;
+
+        j["threading"]["worker_threads"] = m_config.num_worker_threads;
 
         std::ofstream f(path);
         f << j.dump(4);
