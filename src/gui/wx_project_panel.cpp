@@ -435,7 +435,7 @@ void ProjectPanel::on_new(wxCommandEvent& event) {
 }
 
 void ProjectPanel::on_load(wxCommandEvent& event) {
-    wxFileDialog dlg(this, "Load Project", "", "", "Disgrace Projects\t*.dg", wxFD_OPEN);
+    wxFileDialog dlg(this, "Load Project", "", "", "Disgrace Projects (*.dg;*.DG)|*.dg;*.DG", wxFD_OPEN);
     if (dlg.ShowModal() == wxID_OK) {
         m_engine.load_project(dlg.GetPath().ToStdString());
         if (m_main_window) m_main_window->update_all_uis();
@@ -443,7 +443,7 @@ void ProjectPanel::on_load(wxCommandEvent& event) {
 }
 
 void ProjectPanel::on_import(wxCommandEvent& event) {
-    wxFileDialog dlg(this, "Import Audio", "", "", "Audio Files\t*.{wav,flac,ogg,mp3,aiff,sf2,xrns}", wxFD_OPEN);
+    wxFileDialog dlg(this, "Import Audio", "", "", "Audio Files (*.wav;*.flac;*.ogg;*.mp3;*.aiff;*.sf2;*.xrns)|*.wav;*.flac;*.ogg;*.mp3;*.aiff;*.sf2;*.xrns;*.WAV;*.FLAC;*.OGG;*.MP3;*.AIFF;*.SF2;*.XRNS", wxFD_OPEN);
     if (dlg.ShowModal() == wxID_OK) {
         m_engine.import_audio(dlg.GetPath().ToStdString());
         if (m_main_window) m_main_window->update_all_uis();
@@ -451,7 +451,7 @@ void ProjectPanel::on_import(wxCommandEvent& event) {
 }
 
 void ProjectPanel::on_save(wxCommandEvent& event) {
-    wxFileDialog dlg(this, "Save Project", "", "", "Disgrace Projects\t*.dg", wxFD_SAVE);
+    wxFileDialog dlg(this, "Save Project", "", "", "Disgrace Projects (*.dg)|*.dg", wxFD_SAVE);
     if (dlg.ShowModal() == wxID_OK) {
         m_engine.save_project(dlg.GetPath().ToStdString());
     }
@@ -538,6 +538,11 @@ void ProjectPanel::update_file_list(const wxString& dir) {
     if (directory.IsOpened()) {
         wxString filename;
         bool cont = directory.GetFirst(&filename, "*.dg", wxDIR_FILES);
+        while (cont) {
+            m_file_list->Append(filename);
+            cont = directory.GetNext(&filename);
+        }
+        cont = directory.GetFirst(&filename, "*.DG", wxDIR_FILES);
         while (cont) {
             m_file_list->Append(filename);
             cont = directory.GetNext(&filename);
