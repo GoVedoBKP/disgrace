@@ -167,6 +167,9 @@ bool DSSIInstrument::load_plugin(const std::string& path, int index) {
         ladspa->activate(m_instance);
     }
 
+    // Pre-reserve MIDI event buffer to avoid heap allocation in the RT audio thread.
+    m_pending_events.reserve(64);
+
     return true;
 }
 

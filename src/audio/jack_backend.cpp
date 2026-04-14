@@ -77,6 +77,10 @@ bool JackBackend::start()
     if (jack_activate(m_client))
         return false;
 
+    // Pre-allocate RT buffer pointer arrays after port count is known.
+    m_out_bufs_rt.resize(m_num_outs, nullptr);
+    m_in_bufs_rt.resize(m_num_ins, nullptr);
+
     // Auto-connect output ports to physical playback ports
     const char **ports = jack_get_ports(m_client, nullptr, nullptr, JackPortIsPhysical | JackPortIsInput);
     if (ports) {
@@ -108,6 +112,8 @@ void JackBackend::stop()
         m_output_ports.clear();
         m_midi_input_ports.clear();
         m_midi_output_ports.clear();
+        m_out_bufs_rt.clear();
+        m_in_bufs_rt.clear();
     }
 }
 
@@ -133,16 +139,15 @@ int JackBackend::process_callback(jack_nframes_t nframes, void *arg)
 
 int JackBackend::process(jack_nframes_t nframes)
 {
-    std::vector<float*> out_bufs;
-    for (auto* port : m_output_ports) {
-        float* buf = (float*)jack_port_get_buffer(port, nframes);
+    // Fill pre-allocated buffer pointer arrays — no heap allocation in the RT thread.
+    for (uint32_t i = 0; i < (uint32_t)m_output_ports.size(); ++i) {
+        float* buf = (float*)jack_port_get_buffer(m_output_ports[i], nframes);
         if (buf) std::memset(buf, 0, sizeof(float) * nframes);
-        out_bufs.push_back(buf);
+        m_out_bufs_rt[i] = buf;
     }
 
-    std::vector<float*> in_bufs;
-    for (auto* port : m_input_ports) {
-        in_bufs.push_back((float*)jack_port_get_buffer(port, nframes));
+    for (uint32_t i = 0; i < (uint32_t)m_input_ports.size(); ++i) {
+        m_in_bufs_rt[i] = (float*)jack_port_get_buffer(m_input_ports[i], nframes);
     }
 
     // Process MIDI inputs
@@ -176,8 +181,9 @@ int JackBackend::process(jack_nframes_t nframes)
         }
     }
 
-    if (out_bufs.size() >= 2) {
-        m_engine->process_audio(in_bufs.data(), (uint32_t)in_bufs.size(), out_bufs.data(), (uint32_t)out_bufs.size(), nframes);
+    if (m_out_bufs_rt.size() >= 2) {
+        m_engine->process_audio(m_in_bufs_rt.data(), (uint32_t)m_in_bufs_rt.size(),
+                                m_out_bufs_rt.data(), (uint32_t)m_out_bufs_rt.size(), nframes);
     }
 
     return 0;

@@ -60,6 +60,11 @@ private:
     std::vector<jack_port_t*> m_output_ports;
     std::vector<jack_port_t*> m_midi_input_ports;
     std::vector<jack_port_t*> m_midi_output_ports;
+
+    // Pre-allocated buffer pointer arrays — reused every callback to avoid
+    // dynamic memory allocation in the real-time audio thread.
+    std::vector<float*> m_out_bufs_rt;
+    std::vector<float*> m_in_bufs_rt;
 };
 
 } // namespace disgrace_ns
