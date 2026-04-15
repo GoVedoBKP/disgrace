@@ -26,6 +26,9 @@ namespace disgrace_ns
     {
         m_fluid_settings = new_fluid_settings();
         fluid_settings_setnum(m_fluid_settings, "synth.sample-rate", sample_rate);
+        // Set gain to 1.0 (unity) and don't change it later, 
+        // because the Track mixer already applies volume.
+        fluid_settings_setnum(m_fluid_settings, "synth.gain", 1.0);
         m_fluid_synth = new_fluid_synth(m_fluid_settings);
     }
 
@@ -65,7 +68,6 @@ namespace disgrace_ns
     void SoundFontInstrument::set_volume(float vol)
     {
         m_volume = vol;
-        fluid_synth_set_gain(m_fluid_synth, vol);
     }
 
     void SoundFontInstrument::set_pitch(float freq)

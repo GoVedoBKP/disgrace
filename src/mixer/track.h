@@ -155,7 +155,7 @@ public:
     float input_delay() const;
 
 private:
-    float m_volume = 1.f;
+    float m_volume = 0.5f;
     bool  m_mute   = false;
     bool  m_solo   = false;
     bool  m_minimized = false;  // Track minimization state

@@ -25,7 +25,7 @@ namespace disgrace_ns
 {
 
 disgrace_ns::Track::Track()
-    : m_meter_l(0.0f), m_meter_r(0.0f), m_current_freq(440.0f), m_name("New Track"), m_output_bus(-1), m_notation(NotationType::Violin)
+    : m_volume(0.5f), m_meter_l(0.0f), m_meter_r(0.0f), m_current_freq(440.0f), m_name("New Track"), m_output_bus(-1), m_notation(NotationType::Violin)
 {
 }
 

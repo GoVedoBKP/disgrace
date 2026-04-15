@@ -76,7 +76,6 @@ namespace disgrace_ns
 
     void disgrace_ns::SampleInstrument::set_volume(float vol)
     {
-        for (auto& v : m_voices) if (v && v->active()) v->set_volume(vol);
     }
 
     void disgrace_ns::SampleInstrument::set_pitch(float freq)

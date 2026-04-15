@@ -372,7 +372,6 @@ void SfzInstrument::panic()
 
 void SfzInstrument::set_volume(float vol)
 {
-    m_volume = vol;
 }
 
 void SfzInstrument::process(float* l, float* r, size_t nframes)

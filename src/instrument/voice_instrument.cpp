@@ -207,7 +207,6 @@ void VoiceInstrument::panic() {
 }
 
 void VoiceInstrument::set_volume(float vol) {
-    m_volume = std::max(0.0f, std::min(1.0f, vol));
 }
 
 void VoiceInstrument::set_pitch(float freq) {

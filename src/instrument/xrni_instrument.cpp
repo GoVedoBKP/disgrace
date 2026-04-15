@@ -386,7 +386,6 @@ void XrniInstrument::panic()
 
 void XrniInstrument::set_volume(float vol)
 {
-    m_volume = vol;
 }
 
 void XrniInstrument::process(float* l, float* r, size_t nframes)
