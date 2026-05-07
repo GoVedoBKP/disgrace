@@ -73,15 +73,20 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Mild Overdrive", "Crunch", "Heavy Fuzz", "Digital Shred"};
+        return {"Mild Overdrive", "Crunch", "Heavy Fuzz", "Digital Shred",
+                "Tube Warmth", "Bass Growl", "Synth Grit", "Fuzz Face"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Mild Overdrive") { drive = 0.2f; mix = 0.8f; }
-        else if (name == "Crunch") { drive = 0.5f; mix = 1.0f; }
-        else if (name == "Heavy Fuzz") { drive = 0.8f; mix = 1.0f; }
-        else if (name == "Digital Shred") { drive = 1.0f; mix = 1.0f; }
+        if      (name == "Mild Overdrive") { drive=0.2f; mix=0.8f; }
+        else if (name == "Crunch")         { drive=0.5f; mix=1.0f; }
+        else if (name == "Heavy Fuzz")     { drive=0.8f; mix=1.0f; }
+        else if (name == "Digital Shred")  { drive=1.0f; mix=1.0f; }
+        else if (name == "Tube Warmth")    { drive=0.1f; mix=0.6f; }
+        else if (name == "Bass Growl")     { drive=0.4f; mix=0.9f; }
+        else if (name == "Synth Grit")     { drive=0.6f; mix=0.7f; }
+        else if (name == "Fuzz Face")      { drive=0.9f; mix=1.0f; }
     }
 };
 

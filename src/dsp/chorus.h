@@ -92,14 +92,19 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Subtle Width", "Deep Lush", "Vibrato Chorus"};
+        return {"Subtle Width", "Deep Lush", "Vibrato Chorus",
+                "Ensemble", "String Shimmer", "Leslie Slow", "Pad Width"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Subtle Width") { rate = 0.1f; depth = 0.3f; feedback = 0.1f; mix = 0.3f; }
-        else if (name == "Deep Lush") { rate = 0.2f; depth = 0.7f; feedback = 0.3f; mix = 0.5f; }
-        else if (name == "Vibrato Chorus") { rate = 0.8f; depth = 0.5f; feedback = 0.0f; mix = 0.7f; }
+        if      (name == "Subtle Width")   { rate=0.1f;  depth=0.3f; feedback=0.1f;  mix=0.3f;  }
+        else if (name == "Deep Lush")      { rate=0.2f;  depth=0.7f; feedback=0.3f;  mix=0.5f;  }
+        else if (name == "Vibrato Chorus") { rate=0.8f;  depth=0.5f; feedback=0.0f;  mix=0.7f;  }
+        else if (name == "Ensemble")       { rate=0.15f; depth=0.6f; feedback=0.2f;  mix=0.4f;  }
+        else if (name == "String Shimmer") { rate=0.05f; depth=0.8f; feedback=0.1f;  mix=0.3f;  }
+        else if (name == "Leslie Slow")    { rate=0.05f; depth=0.4f; feedback=0.15f; mix=0.6f;  }
+        else if (name == "Pad Width")      { rate=0.08f; depth=0.5f; feedback=0.25f; mix=0.35f; }
     }
 
 private:

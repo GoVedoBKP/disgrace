@@ -29,7 +29,10 @@ enum class MasteringStyle {
     TRANSPARENT,
     WARM,
     PUNCHY,
-    AGGRESSIVE
+    AGGRESSIVE,
+    VINTAGE_TAPE,
+    MODERN_POP,
+    DARK_ANALOGUE
 };
 
 class MasteringStylesDSP : public disgrace_ns::DSP
@@ -71,6 +74,18 @@ public:
                     sl = std::tanh(sl * 1.5f);
                     sr = std::tanh(sr * 1.5f);
                     break;
+                case MasteringStyle::VINTAGE_TAPE:
+                    sl = std::tanh(sl * 1.05f) * 1.02f;
+                    sr = std::tanh(sr * 1.05f) * 1.02f;
+                    break;
+                case MasteringStyle::MODERN_POP:
+                    sl = (sl > 0 ? std::pow(sl, 0.85f) : -std::pow(-sl, 0.85f));
+                    sr = (sr > 0 ? std::pow(sr, 0.85f) : -std::pow(-sr, 0.85f));
+                    break;
+                case MasteringStyle::DARK_ANALOGUE:
+                    sl = std::tanh(sl * 1.4f) * 0.9f;
+                    sr = std::tanh(sr * 1.4f) * 0.9f;
+                    break;
             }
 
             l[i] = sl;
@@ -79,15 +94,19 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Transparent", "Warm", "Punchy", "Aggressive"};
+        return {"Transparent", "Warm", "Punchy", "Aggressive",
+                "Vintage Tape", "Modern Pop", "Dark Analogue"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Transparent") m_style = MasteringStyle::TRANSPARENT;
-        else if (name == "Warm") m_style = MasteringStyle::WARM;
-        else if (name == "Punchy") m_style = MasteringStyle::PUNCHY;
-        else if (name == "Aggressive") m_style = MasteringStyle::AGGRESSIVE;
+        if      (name == "Transparent")   m_style = MasteringStyle::TRANSPARENT;
+        else if (name == "Warm")          m_style = MasteringStyle::WARM;
+        else if (name == "Punchy")        m_style = MasteringStyle::PUNCHY;
+        else if (name == "Aggressive")    m_style = MasteringStyle::AGGRESSIVE;
+        else if (name == "Vintage Tape")  m_style = MasteringStyle::VINTAGE_TAPE;
+        else if (name == "Modern Pop")    m_style = MasteringStyle::MODERN_POP;
+        else if (name == "Dark Analogue") m_style = MasteringStyle::DARK_ANALOGUE;
     }
 
     std::string get_state() const override {

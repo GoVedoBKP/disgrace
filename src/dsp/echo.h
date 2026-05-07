@@ -96,14 +96,19 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Warm Slap", "Analog Echo", "Damped Repeats"};
+        return {"Warm Slap", "Analog Echo", "Damped Repeats",
+                "Slapback Short", "Ping Pong Sim", "Space Echo", "Tape Delay"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Warm Slap") { time = 0.1f; feedback = 0.2f; damp = 0.5f; mix = 0.4f; }
-        else if (name == "Analog Echo") { time = 0.4f; feedback = 0.6f; damp = 0.4f; mix = 0.3f; }
-        else if (name == "Damped Repeats") { time = 0.3f; feedback = 0.8f; damp = 0.8f; mix = 0.5f; }
+        if      (name == "Warm Slap")      { time=0.1f;  feedback=0.2f;  damp=0.5f; mix=0.4f;  }
+        else if (name == "Analog Echo")    { time=0.4f;  feedback=0.6f;  damp=0.4f; mix=0.3f;  }
+        else if (name == "Damped Repeats") { time=0.3f;  feedback=0.8f;  damp=0.8f; mix=0.5f;  }
+        else if (name == "Slapback Short") { time=0.08f; feedback=0.1f;  damp=0.3f; mix=0.4f;  }
+        else if (name == "Ping Pong Sim")  { time=0.25f; feedback=0.7f;  damp=0.2f; mix=0.4f;  }
+        else if (name == "Space Echo")     { time=0.5f;  feedback=0.75f; damp=0.5f; mix=0.35f; }
+        else if (name == "Tape Delay")     { time=0.35f; feedback=0.65f; damp=0.6f; mix=0.4f;  }
     }
 
 private:

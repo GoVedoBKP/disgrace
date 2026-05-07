@@ -79,14 +79,18 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Safe Ceiling", "Hard Wall", "Soft Limiter"};
+        return {"Safe Ceiling", "Hard Wall", "Soft Limiter",
+                "Broadcast (-1dBFS)", "Mastering", "Transparent Peak"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Safe Ceiling") { ceiling = 0.95f; threshold = 0.90f; release = 0.999f; }
-        else if (name == "Hard Wall") { ceiling = 1.0f; threshold = 1.0f; release = 0.99f; }
-        else if (name == "Soft Limiter") { ceiling = 0.90f; threshold = 0.70f; release = 0.9995f; }
+        if      (name == "Safe Ceiling")         { ceiling=0.95f; threshold=0.90f; release=0.999f;  }
+        else if (name == "Hard Wall")            { ceiling=1.0f;  threshold=1.0f;  release=0.99f;   }
+        else if (name == "Soft Limiter")         { ceiling=0.90f; threshold=0.70f; release=0.9995f; }
+        else if (name == "Broadcast (-1dBFS)")   { ceiling=0.891f;threshold=0.85f; release=0.999f;  }
+        else if (name == "Mastering")            { ceiling=0.95f; threshold=0.80f; release=0.9998f; }
+        else if (name == "Transparent Peak")     { ceiling=0.98f; threshold=0.95f; release=0.9995f; }
     }
 
 private:

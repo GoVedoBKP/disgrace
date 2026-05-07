@@ -28,11 +28,13 @@ class RingModulatorDSP : public disgrace_ns::DSP
 {
 public:
     RingModulatorDSP() { m_current_preset = "Metallic Ring"; }
-    float freq = 0.2f; // Proxy for modulation frequency
+    float freq = 300.0f; // Modulation frequency in Hz (1–1000 Hz)
     float mix = 1.0f;
 
     std::string name() const override { return "Ring Modulator"; }
     std::string type_name() const override { return "RingModulator"; }
+
+    void set_sample_rate(float sr) override { m_sample_rate = sr; }
 
     void process(float* l, float* r, size_t nframes) override
     {
@@ -40,7 +42,7 @@ public:
         for (size_t i = 0; i < nframes; ++i)
         {
             float carrier = std::sin(m_phase);
-            m_phase += freq * 0.1f; // High frequency modulation
+            m_phase += 2.0f * M_PI * freq / m_sample_rate;
             if (m_phase > 2.0f * M_PI) m_phase -= 2.0f * M_PI;
 
             float out_l = l[i] * carrier;
@@ -69,18 +71,24 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Robot Voice", "Alien Bell", "Metallic Ring"};
+        return {"Tremolo 5Hz", "Tremolo 10Hz", "Sideband 100Hz",
+                "Metallic Ring", "Bell 220Hz", "Alien Bell", "Robot Voice"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Robot Voice") { freq = 0.4f; mix = 1.0f; }
-        else if (name == "Alien Bell") { freq = 0.8f; mix = 0.7f; }
-        else if (name == "Metallic Ring") { freq = 0.2f; mix = 0.5f; }
+        if      (name == "Tremolo 5Hz")    { freq =   5.0f; mix = 0.5f; }
+        else if (name == "Tremolo 10Hz")   { freq =  10.0f; mix = 0.4f; }
+        else if (name == "Sideband 100Hz") { freq = 100.0f; mix = 0.8f; }
+        else if (name == "Metallic Ring")  { freq = 300.0f; mix = 0.5f; }
+        else if (name == "Bell 220Hz")     { freq = 220.0f; mix = 0.7f; }
+        else if (name == "Alien Bell")     { freq = 440.0f; mix = 0.7f; }
+        else if (name == "Robot Voice")    { freq =  80.0f; mix = 1.0f; }
     }
 
 private:
     float m_phase = 0;
+    float m_sample_rate = 44100.0f;
 };
 
 } // namespace disgrace_ns

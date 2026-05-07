@@ -156,6 +156,38 @@ public:
         } catch(...) {}
     }
 
+    std::vector<std::string> get_presets() override {
+        return {"Full Range", "Subsonic Cut", "Vocal Range", "Broadcast Safe",
+                "Air Band", "Radio Cut", "DC Block"};
+    }
+
+    void load_preset(const std::string& name) override {
+        m_current_preset = name;
+        if (name == "Full Range") {
+            hpf_freq = 20.0f;    hpf_enabled = false;
+            lpf_freq = 20000.0f; lpf_enabled = false;
+        } else if (name == "Subsonic Cut") {
+            hpf_freq = 25.0f;    hpf_enabled = true;
+            lpf_freq = 20000.0f; lpf_enabled = false;
+        } else if (name == "Vocal Range") {
+            hpf_freq = 80.0f;    hpf_enabled = true;
+            lpf_freq = 12000.0f; lpf_enabled = true;
+        } else if (name == "Broadcast Safe") {
+            hpf_freq = 40.0f;    hpf_enabled = true;
+            lpf_freq = 16000.0f; lpf_enabled = true;
+        } else if (name == "Air Band") {
+            hpf_freq = 30.0f;    hpf_enabled = true;
+            lpf_freq = 20000.0f; lpf_enabled = false;
+        } else if (name == "Radio Cut") {
+            hpf_freq = 120.0f;   hpf_enabled = true;
+            lpf_freq = 8000.0f;  lpf_enabled = true;
+        } else if (name == "DC Block") {
+            hpf_freq = 10.0f;    hpf_enabled = true;
+            lpf_freq = 20000.0f; lpf_enabled = false;
+        }
+        update_filters();
+    }
+
 private:
     Biquad m_hpf;
     Biquad m_lpf;

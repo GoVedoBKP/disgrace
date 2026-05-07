@@ -27,6 +27,7 @@ namespace disgrace_ns
 class StereoExpanderDSP : public disgrace_ns::DSP
 {
 public:
+    StereoExpanderDSP() { m_current_preset = "Stereo (Normal)"; }
     float width = 1.0f; // 0.0 (Mono) to 2.0 (Extra wide), 1.0 is original
 
     std::string name() const override { return "Stereo Expander"; }
@@ -61,14 +62,17 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Mono", "Stereo (Normal)", "Wide", "Extra Wide"};
+        return {"Mono", "Stereo (Normal)", "Wide", "Extra Wide", "Narrow", "Haas Width"};
     }
 
     void load_preset(const std::string& name) override {
-        if (name == "Mono") width = 0.0f;
+        m_current_preset = name;
+        if      (name == "Mono")           width = 0.0f;
         else if (name == "Stereo (Normal)") width = 1.0f;
-        else if (name == "Wide") width = 1.5f;
-        else if (name == "Extra Wide") width = 2.0f;
+        else if (name == "Wide")           width = 1.5f;
+        else if (name == "Extra Wide")     width = 2.0f;
+        else if (name == "Narrow")         width = 0.5f;
+        else if (name == "Haas Width")     width = 1.8f;
     }
 };
 

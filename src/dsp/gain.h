@@ -64,16 +64,21 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Unity", "Silent", "Boost (+6dB)", "Boost (+12dB)", "Attenuate (-6dB)"};
+        return {"Unity", "Silent", "Boost (+6dB)", "Boost (+12dB)", "Attenuate (-6dB)",
+                "Boost (+3dB)", "Attenuate (-3dB)", "Attenuate (-12dB)", "Attenuate (-18dB)"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Unity") gain = 1.0f;
-        else if (name == "Silent") gain = 0.0f;
-        else if (name == "Boost (+6dB)") gain = 2.0f;
-        else if (name == "Boost (+12dB)") gain = 4.0f;
-        else if (name == "Attenuate (-6dB)") gain = 0.5f;
+        if      (name == "Unity")             gain = 1.0f;
+        else if (name == "Silent")            gain = 0.0f;
+        else if (name == "Boost (+6dB)")      gain = 2.0f;
+        else if (name == "Boost (+12dB)")     gain = 4.0f;
+        else if (name == "Attenuate (-6dB)")  gain = 0.5f;
+        else if (name == "Boost (+3dB)")      gain = 1.414f;
+        else if (name == "Attenuate (-3dB)")  gain = 0.707f;
+        else if (name == "Attenuate (-12dB)") gain = 0.25f;
+        else if (name == "Attenuate (-18dB)") gain = 0.125f;
     }
 
 private:

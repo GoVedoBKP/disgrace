@@ -78,14 +78,19 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Vocal Air", "Drum Crisp", "Master Polish"};
+        return {"Vocal Air", "Drum Crisp", "Master Polish",
+                "String Sheen", "Piano Air", "Bass Presence", "Tape Saturation"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Vocal Air") { amount = 0.4f; freq = 0.8f; }
-        else if (name == "Drum Crisp") { amount = 0.6f; freq = 0.6f; }
-        else if (name == "Master Polish") { amount = 0.2f; freq = 0.7f; }
+        if      (name == "Vocal Air")        { amount=0.4f;  freq=0.8f;  }
+        else if (name == "Drum Crisp")       { amount=0.6f;  freq=0.6f;  }
+        else if (name == "Master Polish")    { amount=0.2f;  freq=0.7f;  }
+        else if (name == "String Sheen")     { amount=0.3f;  freq=0.9f;  }
+        else if (name == "Piano Air")        { amount=0.25f; freq=0.85f; }
+        else if (name == "Bass Presence")    { amount=0.5f;  freq=0.3f;  }
+        else if (name == "Tape Saturation")  { amount=0.4f;  freq=0.5f;  }
     }
 
 private:

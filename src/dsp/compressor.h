@@ -95,15 +95,21 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Gentle Master", "Punchy Drums", "Vocal Leveler", "Hard Squash"};
+        return {"Gentle Master", "Punchy Drums", "Vocal Leveler", "Hard Squash",
+                "Bass Glue", "Acoustic Guitar", "Bus Compression", "Vintage Opto", "Limiter Mode"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Gentle Master") { threshold = 0.8f; ratio = 2.0f; attack = 0.05f; release = 0.2f; makeup = 1.1f; }
-        else if (name == "Punchy Drums") { threshold = 0.5f; ratio = 4.0f; attack = 0.01f; release = 0.1f; makeup = 1.2f; }
-        else if (name == "Vocal Leveler") { threshold = 0.6f; ratio = 3.0f; attack = 0.02f; release = 0.3f; makeup = 1.1f; }
-        else if (name == "Hard Squash") { threshold = 0.3f; ratio = 10.0f; attack = 0.005f; release = 0.05f; makeup = 1.5f; }
+        if      (name == "Gentle Master")   { threshold=0.8f;  ratio=2.0f;  attack=0.05f;  release=0.2f;  makeup=1.1f;  }
+        else if (name == "Punchy Drums")    { threshold=0.5f;  ratio=4.0f;  attack=0.01f;  release=0.1f;  makeup=1.2f;  }
+        else if (name == "Vocal Leveler")   { threshold=0.6f;  ratio=3.0f;  attack=0.02f;  release=0.3f;  makeup=1.1f;  }
+        else if (name == "Hard Squash")     { threshold=0.3f;  ratio=10.0f; attack=0.005f; release=0.05f; makeup=1.5f;  }
+        else if (name == "Bass Glue")       { threshold=0.6f;  ratio=3.0f;  attack=0.03f;  release=0.25f; makeup=1.15f; }
+        else if (name == "Acoustic Guitar") { threshold=0.7f;  ratio=2.5f;  attack=0.005f; release=0.15f; makeup=1.1f;  }
+        else if (name == "Bus Compression") { threshold=0.75f; ratio=2.0f;  attack=0.03f;  release=0.15f; makeup=1.05f; }
+        else if (name == "Vintage Opto")    { threshold=0.65f; ratio=3.0f;  attack=0.05f;  release=0.5f;  makeup=1.2f;  }
+        else if (name == "Limiter Mode")    { threshold=0.9f;  ratio=20.0f; attack=0.001f; release=0.05f; makeup=1.0f;  }
     }
 
 private:

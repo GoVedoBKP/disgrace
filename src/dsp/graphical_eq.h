@@ -144,16 +144,37 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Flat", "Bass Boost", "Treble Boost", "Loudness", "Mid Scoop"};
+        return {"Flat", "Bass Boost", "Treble Boost", "Loudness", "Mid Scoop",
+                "Presence Boost", "Telephone", "Club EQ", "Radio Voice", "Broadcast"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
         if (name == "Flat") { m_gains.fill(0.0f); }
-        else if (name == "Bass Boost") { m_gains.fill(0.0f); m_gains[0]=6; m_gains[1]=5; m_gains[2]=3; }
+        else if (name == "Bass Boost")   { m_gains.fill(0.0f); m_gains[0]=6; m_gains[1]=5; m_gains[2]=3; }
         else if (name == "Treble Boost") { m_gains.fill(0.0f); m_gains[8]=3; m_gains[9]=5; m_gains[10]=6; m_gains[11]=6; }
-        else if (name == "Loudness") { m_gains.fill(0.0f); m_gains[0]=6; m_gains[1]=4; m_gains[10]=4; m_gains[11]=6; }
-        else if (name == "Mid Scoop") { m_gains.fill(0.0f); m_gains[4]=-4; m_gains[5]=-6; m_gains[6]=-4; }
+        else if (name == "Loudness")     { m_gains.fill(0.0f); m_gains[0]=6; m_gains[1]=4; m_gains[10]=4; m_gains[11]=6; }
+        else if (name == "Mid Scoop")    { m_gains.fill(0.0f); m_gains[4]=-4; m_gains[5]=-6; m_gains[6]=-4; }
+        else if (name == "Presence Boost") {
+            m_gains.fill(0.0f);
+            m_gains[6]=3; m_gains[7]=4; m_gains[8]=3;
+        }
+        else if (name == "Telephone") {
+            m_gains.fill(-12.0f);
+            m_gains[3]=8; m_gains[4]=10; m_gains[5]=8;
+        }
+        else if (name == "Club EQ") {
+            m_gains.fill(0.0f);
+            m_gains[0]=5; m_gains[1]=4; m_gains[7]=3; m_gains[8]=4;
+        }
+        else if (name == "Radio Voice") {
+            m_gains.fill(0.0f);
+            m_gains[0]=-6; m_gains[1]=-4; m_gains[3]=3; m_gains[4]=4; m_gains[9]=-3; m_gains[10]=-5;
+        }
+        else if (name == "Broadcast") {
+            m_gains.fill(0.0f);
+            m_gains[0]=-3; m_gains[4]=2; m_gains[7]=2;
+        }
         update_filters();
     }
 

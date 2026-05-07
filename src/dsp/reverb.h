@@ -103,15 +103,21 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Small Room", "Large Hall", "Cathedral", "Dark Plate"};
+        return {"Small Room", "Large Hall", "Cathedral", "Dark Plate",
+                "Bright Chamber", "Spring Tank", "Gated Room", "Warm Studio", "Drum Room"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Small Room") { room_size = 0.3f; damp = 0.5f; mix = 0.2f; }
-        else if (name == "Large Hall") { room_size = 0.7f; damp = 0.2f; mix = 0.4f; }
-        else if (name == "Cathedral") { room_size = 0.9f; damp = 0.1f; mix = 0.5f; }
-        else if (name == "Dark Plate") { room_size = 0.6f; damp = 0.8f; mix = 0.3f; }
+        if      (name == "Small Room")     { room_size=0.3f; damp=0.5f; mix=0.2f;  }
+        else if (name == "Large Hall")     { room_size=0.7f; damp=0.2f; mix=0.4f;  }
+        else if (name == "Cathedral")      { room_size=0.9f; damp=0.1f; mix=0.5f;  }
+        else if (name == "Dark Plate")     { room_size=0.6f; damp=0.8f; mix=0.3f;  }
+        else if (name == "Bright Chamber") { room_size=0.4f; damp=0.1f; mix=0.25f; }
+        else if (name == "Spring Tank")    { room_size=0.35f;damp=0.6f; mix=0.35f; }
+        else if (name == "Gated Room")     { room_size=0.2f; damp=0.9f; mix=0.4f;  }
+        else if (name == "Warm Studio")    { room_size=0.5f; damp=0.4f; mix=0.3f;  }
+        else if (name == "Drum Room")      { room_size=0.3f; damp=0.3f; mix=0.35f; }
     }
 
 private:

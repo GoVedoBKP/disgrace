@@ -117,7 +117,6 @@ public:
     void process(float* l, float* r, size_t nframes) override
     {
         if (m_bypassed) return;
-        update_filters(); // Update in real-time or on parameter change
         for (size_t i = 0; i < nframes; ++i)
         {
             float out_l = l[i];

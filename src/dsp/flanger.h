@@ -87,14 +87,19 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Classic Flange", "Deep Jet", "Metallic Wobble"};
+        return {"Classic Flange", "Deep Jet", "Metallic Wobble",
+                "Slow Sweep", "Chorus Flange", "Subtle Thicken", "Hard Flange"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Classic Flange") { rate = 0.2f; depth = 0.5f; feedback = 0.5f; mix = 0.5f; }
-        else if (name == "Deep Jet") { rate = 0.1f; depth = 0.9f; feedback = 0.8f; mix = 0.6f; }
-        else if (name == "Metallic Wobble") { rate = 0.9f; depth = 0.2f; feedback = 0.9f; mix = 0.7f; }
+        if      (name == "Classic Flange")  { rate=0.2f;  depth=0.5f; feedback=0.5f; mix=0.5f; }
+        else if (name == "Deep Jet")        { rate=0.1f;  depth=0.9f; feedback=0.8f; mix=0.6f; }
+        else if (name == "Metallic Wobble") { rate=0.9f;  depth=0.2f; feedback=0.9f; mix=0.7f; }
+        else if (name == "Slow Sweep")      { rate=0.05f; depth=0.7f; feedback=0.4f; mix=0.5f; }
+        else if (name == "Chorus Flange")   { rate=0.15f; depth=0.4f; feedback=0.3f; mix=0.4f; }
+        else if (name == "Subtle Thicken")  { rate=0.1f;  depth=0.2f; feedback=0.2f; mix=0.3f; }
+        else if (name == "Hard Flange")     { rate=0.4f;  depth=0.8f; feedback=0.9f; mix=0.7f; }
     }
 
 private:

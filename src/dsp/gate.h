@@ -87,14 +87,19 @@ public:
     }
 
     std::vector<std::string> get_presets() override {
-        return {"Noise Floor", "Tight Drums", "Hard Cut"};
+        return {"Noise Floor", "Tight Drums", "Hard Cut",
+                "Vocal Gate", "Room Noise", "Expander Light", "Snare Tighten"};
     }
 
     void load_preset(const std::string& name) override {
         m_current_preset = name;
-        if (name == "Noise Floor") { threshold = 0.05f; range = 0.0f; attack = 0.01f; release = 0.1f; }
-        else if (name == "Tight Drums") { threshold = 0.2f; range = 0.0f; attack = 0.001f; release = 0.05f; }
-        else if (name == "Hard Cut") { threshold = 0.5f; range = 0.0f; attack = 0.001f; release = 0.01f; }
+        if      (name == "Noise Floor")     { threshold=0.05f; range=0.0f; attack=0.01f;  release=0.1f;  }
+        else if (name == "Tight Drums")     { threshold=0.2f;  range=0.0f; attack=0.001f; release=0.05f; }
+        else if (name == "Hard Cut")        { threshold=0.5f;  range=0.0f; attack=0.001f; release=0.01f; }
+        else if (name == "Vocal Gate")      { threshold=0.15f; range=0.0f; attack=0.005f; release=0.2f;  }
+        else if (name == "Room Noise")      { threshold=0.03f; range=0.0f; attack=0.02f;  release=0.3f;  }
+        else if (name == "Expander Light")  { threshold=0.1f;  range=0.3f; attack=0.01f;  release=0.15f; }
+        else if (name == "Snare Tighten")   { threshold=0.3f;  range=0.0f; attack=0.001f; release=0.08f; }
     }
 
 private:
